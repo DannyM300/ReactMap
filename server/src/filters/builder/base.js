@@ -96,6 +96,7 @@ function buildDefaultFilters(perms) {
               ? defaultFilters.pokestops.eventStops
               : undefined,
             quests: perms.quests ? defaultFilters.pokestops.quests : undefined,
+            showBackgrounds: perms.quests ? false : undefined,
             showQuestSet: hasDualQuestLayer
               ? defaultFilters.pokestops.questSet
               : questLayerMode,

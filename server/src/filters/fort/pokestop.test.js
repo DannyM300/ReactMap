@@ -116,3 +116,19 @@ test('task expansion respects onlyQuests being off, same as any reward key', () 
   const clauses = buildPokestopDnfFilters(filters, {}, TASK_CONDITIONS)
   assert.deepEqual(clauses, [])
 })
+
+test('show backgrounds fetches all encounter quests for residual matching', () => {
+  const clauses = buildPokestopDnfFilters({
+    onlyQuests: true,
+    onlyShowBackgrounds: true,
+  })
+  assert.deepEqual(clauses, [{ quest_reward_type: [7] }])
+})
+
+test('show backgrounds contributes nothing while quests are off', () => {
+  const clauses = buildPokestopDnfFilters({
+    onlyQuests: false,
+    onlyShowBackgrounds: true,
+  })
+  assert.deepEqual(clauses, [])
+})

@@ -38,6 +38,8 @@ const { mapAvailablePokestops } = require('./pokestopAvailableMapper')
 const {
   addTaskCondition,
   matchesAdvancedFilter,
+  matchesBackgroundQuest,
+  matchesQuestRewardFilter,
 } = require('../filters/pokestop/questTaskMatch')
 
 const MEGA_RESOURCE_REWARD_TYPE = 12
@@ -273,6 +275,7 @@ class Pokestop extends Model {
         onlyLevels = 'all',
         onlyLures,
         onlyQuests,
+        onlyShowBackgrounds,
         onlyInvasions,
         onlyArEligible,
         onlyAllPokestops,
@@ -412,10 +415,16 @@ class Pokestop extends Model {
               questTypes
                 .orWhereIn('quest_item_id', items)
                 .orWhereIn('quest_pokemon_id', pokemon)
+              if (onlyShowBackgrounds) {
+                questTypes.orWhere('quest_reward_type', 7)
+              }
               if (hasAltQuests) {
                 questTypes
                   .orWhereIn('alternative_quest_item_id', items)
                   .orWhereIn('alternative_quest_pokemon_id', pokemon)
+                if (onlyShowBackgrounds) {
+                  questTypes.orWhere('alternative_quest_reward_type', 7)
+                }
               }
               if (hasRewardAmount) {
                 questTypes.orWhere((dust) => {
@@ -1202,7 +1211,16 @@ class Pokestop extends Model {
             // wanted" can surface the quest.
             const taskKey = `k${quest.quest_title}-${quest.quest_target}`
             const matchesFilter =
-              matchesAdvancedFilter(filters[newQuest.key], questCondition) ||
+              matchesBackgroundQuest(
+                filters.onlyShowBackgrounds,
+                quest.quest_reward_type,
+                quest.quest_background,
+              ) ||
+              matchesQuestRewardFilter(
+                filters[newQuest.key],
+                questCondition,
+                quest.quest_background,
+              ) ||
               matchesAdvancedFilter(filters[taskKey], newQuest.key)
             if (
               quest.quest_timestamp >= midnight &&

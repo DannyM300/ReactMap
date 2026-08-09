@@ -22,6 +22,29 @@ const matchesAdvancedFilter = (filter, matchValue) => {
 }
 
 /**
+ * Applies the encounter-only options that belong to a reward-primary quest
+ * filter. `all` keeps its existing meaning and bypasses every narrowing
+ * option; otherwise `backgroundOnly` requires a non-zero location-card ID.
+ *
+ * @param {{ adv?: string | string[], all?: boolean, backgroundOnly?: boolean } | undefined} filter
+ * @param {string} matchValue
+ * @param {number | string | null | undefined} background
+ */
+const matchesQuestRewardFilter = (filter, matchValue, background) =>
+  matchesAdvancedFilter(filter, matchValue) &&
+  (filter.all || !filter.backgroundOnly || Number(background) > 0)
+
+/**
+ * Global additive match for any confirmed special-background encounter quest.
+ *
+ * @param {boolean} enabled
+ * @param {number | string | null | undefined} rewardType
+ * @param {number | string | null | undefined} background
+ */
+const matchesBackgroundQuest = (enabled, rewardType, background) =>
+  !!enabled && Number(rewardType) === 7 && Number(background) > 0
+
+/**
  * Accumulates one reward key onto its task's entry, mutating `taskConditions`
  * in place. Mirrors the reward-primary `conditions[rewardKey][conditionKey]`
  * map in the opposite direction: one entry per distinct (title, target) pair
@@ -44,4 +67,9 @@ const addTaskCondition = (taskConditions, key, title, target) => {
   return taskKey
 }
 
-module.exports = { addTaskCondition, matchesAdvancedFilter }
+module.exports = {
+  addTaskCondition,
+  matchesAdvancedFilter,
+  matchesBackgroundQuest,
+  matchesQuestRewardFilter,
+}

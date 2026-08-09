@@ -1,7 +1,12 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
 
-const { addTaskCondition, matchesAdvancedFilter } = require('./questTaskMatch')
+const {
+  addTaskCondition,
+  matchesAdvancedFilter,
+  matchesBackgroundQuest,
+  matchesQuestRewardFilter,
+} = require('./questTaskMatch')
 
 // --- matchesAdvancedFilter ---
 
@@ -90,4 +95,40 @@ test('round trip: a reward key added via addTaskCondition matches via matchesAdv
   const filters = { [taskKey]: { adv: '7-0' } }
   assert.equal(matchesAdvancedFilter(filters[taskKey], '7-0'), true)
   assert.equal(matchesAdvancedFilter(filters[taskKey], 'q1'), false)
+})
+
+// --- matchesQuestRewardFilter ---
+
+test('background-only reward filters reject encounters without a background', () => {
+  const filter = { enabled: true, backgroundOnly: true }
+  assert.equal(matchesQuestRewardFilter(filter, 'task', 0), false)
+  assert.equal(matchesQuestRewardFilter(filter, 'task', null), false)
+  assert.equal(matchesQuestRewardFilter(filter, 'task', 12), true)
+  assert.equal(matchesQuestRewardFilter(filter, 'task', '12'), true)
+})
+
+test('ordinary reward filters accept encounters with or without a background', () => {
+  const filter = { enabled: true, backgroundOnly: false }
+  assert.equal(matchesQuestRewardFilter(filter, 'task', 0), true)
+  assert.equal(matchesQuestRewardFilter(filter, 'task', 12), true)
+})
+
+test('all bypasses background-only and advanced reward narrowing', () => {
+  const filter = {
+    enabled: true,
+    all: true,
+    adv: 'different-task',
+    backgroundOnly: true,
+  }
+  assert.equal(matchesQuestRewardFilter(filter, 'task', 0), true)
+})
+
+// --- matchesBackgroundQuest ---
+
+test('global background matching accepts only enabled encounter backgrounds', () => {
+  assert.equal(matchesBackgroundQuest(true, 7, 12), true)
+  assert.equal(matchesBackgroundQuest(true, '7', '12'), true)
+  assert.equal(matchesBackgroundQuest(false, 7, 12), false)
+  assert.equal(matchesBackgroundQuest(true, 7, 0), false)
+  assert.equal(matchesBackgroundQuest(true, 2, 12), false)
 })

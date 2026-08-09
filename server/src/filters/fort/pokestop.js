@@ -87,6 +87,7 @@ function buildPokestopDnfFilters(rawFilters, eventInvasions, taskConditions) {
     onlyAllPokestops,
     onlyArEligible,
     onlyQuests,
+    onlyShowBackgrounds,
     onlyInvasions,
     onlyLures,
     onlyEventStops,
@@ -115,6 +116,10 @@ function buildPokestopDnfFilters(rawFilters, eventInvasions, taskConditions) {
   const incidentDisplayType = []
   const contestPokemon = []
   const contestPokemonType = []
+
+  // Golbat cannot narrow on the background ID itself. Fetch every encounter
+  // quest as a safe superset; secondaryFilter verifies the non-zero ID.
+  if (onlyShowBackgrounds) typeOnly.add(7)
 
   Object.keys(filters).forEach((key) => {
     if (typeof key !== 'string' || key.length === 0) return
