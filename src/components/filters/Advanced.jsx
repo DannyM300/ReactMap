@@ -121,6 +121,8 @@ export function AdvancedFilter() {
     ((category === 'gyms' || category === 'stations') && /^\d+-/.test(id))
   const hasAll = checkIfHasAll(category, id)
   const controlsDisabled = hasAll && filters.all
+  const isQuestPokemon =
+    category === 'pokestops' && Number.isInteger(Number(id.charAt(0)))
   return (
     <Dialog
       open={!!open}
@@ -190,6 +192,15 @@ export function AdvancedFilter() {
                   />
                 )}
                 {category === 'pokestops' && <QuestConditionSelector id={id} />}
+                {isQuestPokemon && (
+                  <BoolToggle
+                    // @ts-ignore - quest encounter filters extend BaseFilter
+                    field={`filters.${category}.filter.${id}.backgroundOnly`}
+                    label="special_background_only"
+                    disabled={controlsDisabled}
+                    disableGutters
+                  />
+                )}
                 {hasAll ? (
                   <DualBoolToggle
                     items={ENABLED_ALL}

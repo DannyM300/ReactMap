@@ -48,6 +48,7 @@ function buildPokestopDnfFilters(filters, eventInvasions) {
     onlyAllPokestops,
     onlyArEligible,
     onlyQuests,
+    onlyShowBackgrounds,
     onlyInvasions,
     onlyLures,
     onlyEventStops,
@@ -76,6 +77,10 @@ function buildPokestopDnfFilters(filters, eventInvasions) {
   const incidentDisplayType = []
   const contestPokemon = []
   const contestPokemonType = []
+
+  // The scanner API cannot narrow on the background ID itself. Fetch all
+  // encounter quests as a safe superset; secondaryFilter verifies the ID.
+  if (onlyShowBackgrounds) typeOnly.add(7)
 
   Object.keys(filters).forEach((key) => {
     if (typeof key !== 'string' || key.length === 0) return

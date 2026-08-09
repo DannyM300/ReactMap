@@ -6,6 +6,7 @@ import { useMemory } from '@store/useMemory'
 import { useStorage } from '@store/useStorage'
 import { QUEST_SETS } from '@assets/constants'
 import { MultiSelectorStore } from '@components/inputs/MultiSelector'
+import { BoolToggle } from '@components/inputs/BoolToggle'
 
 import { CollapsibleItem } from '../components/CollapsibleItem'
 import { MultiSelectorList, SelectorListMemo } from '../components/SelectorList'
@@ -25,6 +26,10 @@ const BaseQuestQuickSelect = () => {
           />
         </ListItem>
       )}
+      <BoolToggle
+        field="filters.pokestops.showBackgrounds"
+        label="show_all_background_tasks"
+      />
       <MultiSelectorList tabKey="quests">
         <SelectorListMemo
           key="items"

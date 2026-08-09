@@ -22,6 +22,10 @@ const { filterRTree } = require('../utils/filterRTree')
 const { mapScanPokestop } = require('./pokestopScanMapper')
 const { getCombinedFortAvailable } = require('../utils/fortAvailable')
 const { buildPokestopDnfFilters } = require('../filters/fort/pokestop')
+const {
+  matchesBackgroundQuest,
+  matchesQuestRewardFilter,
+} = require('../filters/pokestop/questBackgroundMatch')
 const { describeDnfNarrowing } = require('../filters/fort/describeDnfNarrowing')
 const { state } = require('../services/state')
 const {
@@ -263,6 +267,7 @@ class Pokestop extends Model {
         onlyLevels = 'all',
         onlyLures,
         onlyQuests,
+        onlyShowBackgrounds,
         onlyInvasions,
         onlyArEligible,
         onlyAllPokestops,
@@ -437,10 +442,16 @@ class Pokestop extends Model {
               questTypes
                 .orWhereIn('quest_item_id', items)
                 .orWhereIn('quest_pokemon_id', pokemon)
+              if (onlyShowBackgrounds) {
+                questTypes.orWhere('quest_reward_type', 7)
+              }
               if (hasAltQuests) {
                 questTypes
                   .orWhereIn('alternative_quest_item_id', items)
                   .orWhereIn('alternative_quest_pokemon_id', pokemon)
+                if (onlyShowBackgrounds) {
+                  questTypes.orWhere('alternative_quest_reward_type', 7)
+                }
               }
               if (hasRewardAmount) {
                 questTypes.orWhere((dust) => {
@@ -1311,18 +1322,17 @@ class Pokestop extends Model {
             }
 
             const questCondition = `${quest.quest_title}__${quest.quest_target}`
-            const filterMatchesQuest = (key) => {
-              const filter = filters[key]
-              if (!filter || !filter.adv || filter.all) return !!filter
-              const selectedConditions = Array.isArray(filter.adv)
-                ? filter.adv
-                : filter.adv.split(',')
-              return (
-                !selectedConditions.length ||
-                selectedConditions.includes(questCondition)
+            const matchesFilter =
+              matchesBackgroundQuest(
+                filters.onlyShowBackgrounds,
+                quest.quest_reward_type,
+                quest.quest_background,
+              ) ||
+              matchesQuestRewardFilter(
+                filters[newQuest.key],
+                questCondition,
+                quest.quest_background,
               )
-            }
-            const matchesFilter = filterMatchesQuest(newQuest.key)
             if (
               quest.quest_timestamp >= midnight &&
               (filters.onlyAllPokestops || matchesFilter)
