@@ -28,7 +28,7 @@ const BaseQuestQuickSelect = () => {
       )}
       <BoolToggle
         field="filters.pokestops.showBackgrounds"
-        label="show_all_background_tasks"
+        label="all_background_tasks"
       />
       <MultiSelectorList tabKey="quests">
         <SelectorListMemo
