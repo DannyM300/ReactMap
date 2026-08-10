@@ -146,68 +146,92 @@ function TaskRewardCollage({ id, title, fallbackUrl }) {
   const Icons = useMemory((s) => s.Icons)
   const taskRewards = useMemory((s) => s.available.taskConditions[id]?.rewards)
   const rewards = taskRewards || []
-  const hasOverflow = rewards.length > 4
-  const visibleRewards = hasOverflow ? rewards.slice(0, 3) : rewards.slice(0, 4)
-  const slots = visibleRewards.length + (hasOverflow ? 1 : 0)
-  const columns = visibleRewards.length === 1 ? 1 : 2
-  const rows = slots > 2 ? 2 : 1
+  const visibleRewards = rewards.slice(0, 4)
+  const overflow = Math.max(0, rewards.length - visibleRewards.length)
+  const columns =
+    visibleRewards.length === 1
+      ? 1
+      : visibleRewards.length === 2
+        ? 2
+        : visibleRewards.length === 3
+          ? 3
+          : 2
+  const rows = visibleRewards.length === 4 ? 2 : 1
 
   return (
-    <Tooltip
-      title={process.env.NODE_ENV === 'development' ? id : title}
-      arrow
-      className="vgrid-image"
-    >
-      {visibleRewards.length ? (
+    <>
+      <Tooltip
+        title={process.env.NODE_ENV === 'development' ? id : title}
+        arrow
+      >
+        {visibleRewards.length ? (
+          <Box
+            className="vgrid-image"
+            display="grid"
+            gridTemplateColumns={`repeat(${columns}, minmax(0, 1fr))`}
+            gridTemplateRows={`repeat(${rows}, minmax(0, 1fr))`}
+            width="68%"
+            height={visibleRewards.length === 4 ? '58%' : '52%'}
+            gap="3px"
+            zIndex={10}
+          >
+            {visibleRewards.map((reward) => (
+              <Box
+                key={reward}
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                minWidth={0}
+                minHeight={0}
+                overflow="hidden"
+                p="2px"
+                borderRadius="3px"
+                bgcolor="rgba(0, 0, 0, 0.12)"
+              >
+                <Box
+                  component="img"
+                  alt=""
+                  src={Icons.getIconById(reward)}
+                  width="100%"
+                  height="100%"
+                  sx={{ objectFit: 'contain' }}
+                />
+              </Box>
+            ))}
+          </Box>
+        ) : (
+          <Box
+            className="vgrid-image"
+            component="img"
+            alt={title}
+            src={fallbackUrl}
+            maxHeight="50%"
+            maxWidth="50%"
+            zIndex={10}
+            sx={{ aspectRatio: '1/1', objectFit: 'contain' }}
+          />
+        )}
+      </Tooltip>
+      {!!overflow && (
         <Box
-          display="grid"
-          gridTemplateColumns={`repeat(${columns}, 1fr)`}
-          gridTemplateRows={`repeat(${rows}, 1fr)`}
-          gap="2px"
-          width="54%"
-          height="54%"
-          zIndex={10}
+          position="absolute"
+          top="4px"
+          left="50%"
+          px="5px"
+          py="1px"
+          borderRadius="3px"
+          bgcolor="rgba(0, 0, 0, 0.82)"
+          color="common.white"
+          fontSize="0.65rem"
+          fontWeight="bold"
+          lineHeight={1.35}
+          zIndex={500}
+          sx={{ transform: 'translateX(-50%)', pointerEvents: 'none' }}
         >
-          {visibleRewards.map((reward) => (
-            <Box
-              component="img"
-              key={reward}
-              alt=""
-              src={Icons.getIconById(reward)}
-              width="100%"
-              height="100%"
-              minWidth={0}
-              sx={{ objectFit: 'contain' }}
-            />
-          ))}
-          {hasOverflow && (
-            <Box
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              borderRadius="50%"
-              bgcolor="rgba(0, 0, 0, 0.65)"
-              color="common.white"
-              fontSize="0.7rem"
-              fontWeight="bold"
-              sx={{ aspectRatio: '1/1' }}
-            >
-              +{rewards.length - visibleRewards.length}
-            </Box>
-          )}
+          +{overflow}
         </Box>
-      ) : (
-        <Box
-          component="img"
-          alt={title}
-          src={fallbackUrl}
-          maxHeight="50%"
-          maxWidth="50%"
-          zIndex={10}
-          sx={{ aspectRatio: '1/1', objectFit: 'contain' }}
-        />
       )}
-    </Tooltip>
+    </>
   )
 }
 
