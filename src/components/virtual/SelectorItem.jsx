@@ -166,13 +166,16 @@ function TaskRewardCollage({ id, title, fallbackUrl }) {
       >
         {visibleRewards.length ? (
           <Box
-            className="vgrid-image"
+            position="absolute"
+            top="24%"
+            right="14%"
+            bottom="20%"
+            left="14%"
             display="grid"
             gridTemplateColumns={`repeat(${columns}, minmax(0, 1fr))`}
             gridTemplateRows={`repeat(${rows}, minmax(0, 1fr))`}
-            width="68%"
-            height={visibleRewards.length === 4 ? '58%' : '52%'}
             gap="3px"
+            overflow="hidden"
             zIndex={10}
           >
             {visibleRewards.map((reward) => (
@@ -192,9 +195,12 @@ function TaskRewardCollage({ id, title, fallbackUrl }) {
                   component="img"
                   alt=""
                   src={Icons.getIconById(reward)}
+                  display="block"
                   width="100%"
                   height="100%"
-                  sx={{ objectFit: 'contain' }}
+                  minWidth={0}
+                  minHeight={0}
+                  sx={{ objectFit: 'contain', objectPosition: 'center' }}
                 />
               </Box>
             ))}
