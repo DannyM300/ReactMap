@@ -75,7 +75,7 @@ working `a<id>-0` selection and the corrected server definition is
 tile before the obsolete key is removed. Users do not silently lose their
 Rocket selection when updating.
 
-## After replay
+## After replay and deployment
 
 Replaying the seven live edge cases through the corrected Golbat mapper gives:
 
@@ -93,6 +93,20 @@ No `-0` duplicate remains for the four affected species. Applying this to the
 captured availability set reduces its Rocket keys from 88 to 84: exactly the
 four dead duplicates are removed. No real alternate key is collapsed.
 
+The same result was then verified from the deployed test map's authenticated
+availability API after rebuilding and restarting revision `ef6eacb9`:
+
+| Live API measurement                                   | Before | After |
+| ------------------------------------------------------ | -----: | ----: |
+| Rocket filter keys                                     |     88 |    84 |
+| Rocket species represented after deployment            |      — |    84 |
+| Species with more than one Rocket key after deployment |      — | **0** |
+
+The full available-filter count was 376 before restart and 373 afterward. That
+total includes quests, lures, invasions and other time-sensitive definitions,
+so it changed independently while testing. The Rocket-only counts above isolate
+the behaviour under test and show the expected removal of all four duplicates.
+
 ## Test results
 
 ### Automated repository tests
@@ -103,6 +117,8 @@ four dead duplicates are removed. No real alternate key is collapsed.
 - ESLint: **passed**.
 - Production Vite build: **passed** (2,377 modules transformed).
 - `git diff --check`: **passed**.
+- Deployed process: **online**, HTTP root returned **200**, with zero unstable
+  restarts.
 
 The Rocket suite covers:
 
