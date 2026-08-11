@@ -2,11 +2,97 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 
 const {
+  addQuestTaskSqlClauses,
   addTaskCondition,
+  getQuestTaskFilters,
+  getQuestTaskKey,
   matchesAdvancedFilter,
   matchesBackgroundQuest,
   matchesQuestRewardFilter,
+  parseQuestTaskKey,
 } = require('./questTaskMatch')
+
+// --- canonical task identity ---
+
+test('task identity includes both title and target', () => {
+  assert.equal(getQuestTaskKey('catch_pokemon', 10), 'kcatch_pokemon-10')
+  assert.notEqual(
+    getQuestTaskKey('catch_pokemon', 10),
+    getQuestTaskKey('catch_pokemon', 25),
+  )
+})
+
+test('task keys round-trip titles containing dashes', () => {
+  const key = getQuestTaskKey('route-event-task', 3)
+  assert.equal(key, 'kroute-event-task-3')
+  assert.deepEqual(parseQuestTaskKey(key), {
+    title: 'route-event-task',
+    target: 3,
+  })
+})
+
+test('malformed task keys are rejected', () => {
+  assert.equal(parseQuestTaskKey('kinvalid'), null)
+  assert.equal(parseQuestTaskKey('k-title'), null)
+  assert.equal(parseQuestTaskKey('kvalid-nope'), null)
+  assert.equal(parseQuestTaskKey('q1'), null)
+})
+
+test('only valid enabled task filters are returned', () => {
+  assert.deepEqual(
+    getQuestTaskFilters({
+      'kcatch_pokemon-10': { adv: '' },
+      kinvalid: { adv: '' },
+      q1: { adv: '' },
+    }),
+    [
+      {
+        key: 'kcatch_pokemon-10',
+        title: 'catch_pokemon',
+        target: 10,
+        filter: { adv: '' },
+      },
+    ],
+  )
+})
+
+test('SQL task clauses bind exact title and target pairs', () => {
+  const calls = []
+  const makeBuilder = () => ({
+    orWhere(callback) {
+      const nested = makeBuilder()
+      callback(nested)
+      calls.push(['orWhere'])
+      return this
+    },
+    where(column, value) {
+      calls.push(['where', column, value])
+      return this
+    },
+    andWhere(column, value) {
+      calls.push(['andWhere', column, value])
+      return this
+    },
+  })
+  addQuestTaskSqlClauses(
+    makeBuilder(),
+    [
+      { title: 'catch_pokemon', target: 10 },
+      { title: 'spin_stops', target: 3 },
+    ],
+    'quest_title',
+    'quest_target',
+  )
+  assert.deepEqual(
+    calls.filter(([method]) => method !== 'orWhere'),
+    [
+      ['where', 'quest_title', 'catch_pokemon'],
+      ['andWhere', 'quest_target', 10],
+      ['where', 'quest_title', 'spin_stops'],
+      ['andWhere', 'quest_target', 3],
+    ],
+  )
+})
 
 // --- matchesAdvancedFilter ---
 

@@ -852,6 +852,7 @@ class Station extends Model {
               res.examined,
               res.stations.length,
               stations.length,
+              { total: res.total, skipped: res.skipped },
             ),
           )
           // Display cap, applied after the local gates; the scan request itself

@@ -1,5 +1,6 @@
 // @ts-check
 
+const { addTaskCondition } = require('../filters/pokestop/questTaskMatch')
 /**
  * Pure mapper for Golbat's `GET /api/pokestop/available` response.
  *
@@ -130,9 +131,7 @@ function mapAvailablePokestops(api, ctx) {
   /** @type {QuestConditions} */
   const conditions = {}
   // Task-primary filter keys (`k<title>-<target>`), the reverse of
-  // `conditions` above - see `addTaskCondition` in
-  // `filters/pokestop/questTaskMatch.js` (not required here to keep this
-  // mapper dependency-free; kept in lockstep with that version by hand).
+  // `conditions` above.
   const taskConditions = {}
 
   const process = (
@@ -146,13 +145,8 @@ function mapAvailablePokestops(api, ctx) {
       } else {
         conditions[key] = { [`${title}-${target}`]: { title, target } }
       }
-      const taskKey = `k${title}-${target}`
-      if (taskKey in taskConditions) {
-        taskConditions[taskKey].rewards[key] = true
-      } else {
-        taskConditions[taskKey] = { title, target, rewards: { [key]: true } }
-      }
-      available.add(taskKey)
+      const taskKey = addTaskCondition(taskConditions, key, title, target)
+      if (taskKey) available.add(taskKey)
     }
     available.add(key)
   }

@@ -45,6 +45,69 @@ const matchesBackgroundQuest = (enabled, rewardType, background) =>
   !!enabled && Number(rewardType) === 7 && Number(background) > 0
 
 /**
+ * Builds the canonical identity used by task filters. A quest task is defined
+ * by BOTH its untranslated title key and target; rewards are deliberately not
+ * part of the identity because the same task can grant different rewards.
+ *
+ * @param {string | number | null | undefined} title
+ * @param {number | string | null | undefined} target
+ * @returns {string | null}
+ */
+const getQuestTaskKey = (title, target) => {
+  const normalizedTitle = `${title ?? ''}`
+  const normalizedTarget = Number(target)
+  if (!normalizedTitle || !Number.isFinite(normalizedTarget)) return null
+  return `k${normalizedTitle}-${normalizedTarget}`
+}
+
+/**
+ * Parses a persisted task key without making assumptions about punctuation in
+ * its title. Splitting at the final dash keeps titles containing dashes valid.
+ *
+ * @param {string} key
+ * @returns {{ title: string, target: number } | null}
+ */
+const parseQuestTaskKey = (key) => {
+  if (typeof key !== 'string' || !key.startsWith('k')) return null
+  const separator = key.lastIndexOf('-')
+  if (separator <= 1 || separator === key.length - 1) return null
+  const title = key.slice(1, separator)
+  const target = Number(key.slice(separator + 1))
+  return title && Number.isFinite(target) ? { title, target } : null
+}
+
+/**
+ * Returns the valid task identities present in the enabled wire filters.
+ * Disabled filters never reach the server because trimFilters removes them.
+ *
+ * @param {Record<string, any>} filters
+ * @returns {{ key: string, title: string, target: number, filter: any }[]}
+ */
+const getQuestTaskFilters = (filters) =>
+  Object.entries(filters || {}).flatMap(([key, filter]) => {
+    const task = parseQuestTaskKey(key)
+    return task ? [{ key, ...task, filter }] : []
+  })
+
+/**
+ * Adds task identity pairs to an existing Knex OR group. The caller supplies
+ * base or alternative quest columns, allowing both scanner schemas to use the
+ * same exact title+target semantics without an additional database query.
+ *
+ * @param {any} builder Knex query/group builder
+ * @param {{ title: string, target: number }[]} tasks
+ * @param {string} titleColumn
+ * @param {string} targetColumn
+ */
+const addQuestTaskSqlClauses = (builder, tasks, titleColumn, targetColumn) => {
+  tasks.forEach(({ title, target }) => {
+    builder.orWhere((task) => {
+      task.where(titleColumn, title).andWhere(targetColumn, target)
+    })
+  })
+}
+
+/**
  * Accumulates one reward key onto its task's entry, mutating `taskConditions`
  * in place. Mirrors the reward-primary `conditions[rewardKey][conditionKey]`
  * map in the opposite direction: one entry per distinct (title, target) pair
@@ -58,7 +121,8 @@ const matchesBackgroundQuest = (enabled, rewardType, background) =>
  * @returns {string} the task key that was added/updated, e.g. `kcatch_pokemon-10`
  */
 const addTaskCondition = (taskConditions, key, title, target) => {
-  const taskKey = `k${title}-${target}`
+  const taskKey = getQuestTaskKey(title, target)
+  if (!taskKey) return ''
   if (taskKey in taskConditions) {
     taskConditions[taskKey].rewards[key] = true
   } else {
@@ -69,7 +133,11 @@ const addTaskCondition = (taskConditions, key, title, target) => {
 
 module.exports = {
   addTaskCondition,
+  addQuestTaskSqlClauses,
+  getQuestTaskFilters,
+  getQuestTaskKey,
   matchesAdvancedFilter,
   matchesBackgroundQuest,
   matchesQuestRewardFilter,
+  parseQuestTaskKey,
 }

@@ -1,47 +1,91 @@
 // @ts-check
 const { parseIdFormPair } = require('./parseIdForm')
+const { getQuestTaskFilters } = require('../pokestop/questTaskMatch')
 
 // Incident display types for Team Rocket grunt invasions (the only invasions
 // that carry a catchable reward). Sourced from the GMO, so reliable — unlike
 // the reward pokemon (see the `a` rocket-reward handling below). Golbat doc:
 // display_type 1-4 = rocket, 7 goldstop, 8 kecleon, 9 showcase.
 const ROCKET_INCIDENT_DISPLAY_TYPES = [1, 2, 3, 4]
+const MEGA_RESOURCE_REWARD_TYPE = 12
+const TEMP_EVO_BRANCH_RESOURCE_REWARD_TYPE = 20
 
 /**
- * Expands enabled task-primary filters (`k<title>-<target>`) into their
- * reward-primary equivalents, so the switch below - which only understands
- * reward keys - picks them up automatically without needing its own clause
- * type. A task narrowed via `.adv` to specific rewards (the reverse Advanced
- * dialog) expands to only those; an unnarrowed task expands to every reward
- * `taskConditions` has ever seen it grant.
+ * Expands only task filters explicitly narrowed to reward keys. An unnarrowed
+ * task must NOT be translated through its currently observed rewards: rewards
+ * can rotate while the task identity (title + target) remains the same, which
+ * would make that translation under-fetch. Instead it is reported separately
+ * so the caller can request every quest reward type as a safe superset.
  *
  * Presence of a key in `filters` already means enabled - `trimFilters`
  * strips disabled entries and the `enabled` field itself before the client
  * ever sends this - so no `.enabled` check is needed here, matching every
  * other key in this file.
  * @param {Record<string, any>} filters
- * @param {Record<string, {rewards?: string[]}>} [taskConditions]
- * @returns {Record<string, any>}
+ * @returns {{ filters: Record<string, any>, hasBroadTask: boolean }}
  */
-function expandTaskFilters(filters, taskConditions) {
-  if (!taskConditions) return filters
-  const taskKeys = Object.keys(filters).filter((key) => key.startsWith('k'))
-  if (!taskKeys.length) return filters
+function expandTaskFilters(filters) {
   const expanded = { ...filters }
-  taskKeys.forEach((taskKey) => {
-    const filter = filters[taskKey]
-    const rewards =
-      filter?.adv && !filter.all
-        ? Array.isArray(filter.adv)
-          ? filter.adv
-          : filter.adv.split(',')
-        : taskConditions[taskKey]?.rewards
-    if (!rewards) return
+  let hasBroadTask = false
+  getQuestTaskFilters(filters).forEach(({ filter }) => {
+    if (!filter?.adv || filter.all) {
+      hasBroadTask = true
+      return
+    }
+    const rewards = Array.isArray(filter.adv)
+      ? filter.adv
+      : filter.adv.split(',')
     rewards.forEach((rewardKey) => {
-      if (!expanded[rewardKey]) expanded[rewardKey] = { all: false, adv: '' }
+      if (typeof rewardKey === 'string' && rewardKey && !expanded[rewardKey])
+        expanded[rewardKey] = { all: false, adv: '' }
     })
   })
-  return expanded
+  return { filters: expanded, hasBroadTask }
+}
+
+/** @param {Record<string, any> | any[] | undefined} questRewardTypes */
+const getQuestRewardTypeIds = (questRewardTypes) =>
+  (Array.isArray(questRewardTypes)
+    ? questRewardTypes
+    : Object.keys(questRewardTypes || {})
+  )
+    .map(Number)
+    .filter((type) => Number.isFinite(type) && type > 0)
+
+/**
+ * Derives reward types from the live task catalogue as a forward-compatibility
+ * supplement to the masterfile. `m` represents both mega resource encodings.
+ * An unknown key shape is unsafe: the caller must use a match-all DNF rather
+ * than silently exclude a reward type it does not understand yet.
+ *
+ * @param {Record<string, {rewards?: string[]}> | undefined} taskConditions
+ * @returns {{ types: number[], hasUnknown: boolean }}
+ */
+const getObservedTaskRewardTypes = (taskConditions) => {
+  const types = new Set()
+  let hasUnknown = false
+  Object.values(taskConditions || {}).forEach(({ rewards = [] }) => {
+    rewards.forEach((key) => {
+      if (typeof key !== 'string' || !key) {
+        hasUnknown = true
+        return
+      }
+      const prefix = key.charAt(0)
+      if (Number.isInteger(Number(prefix))) types.add(7)
+      else if (prefix === 'q') types.add(2)
+      else if (prefix === 'd') types.add(3)
+      else if (prefix === 'p') types.add(1)
+      else if (prefix === 'c') types.add(4)
+      else if (prefix === 'x') types.add(9)
+      else if (prefix === 'm') {
+        types.add(MEGA_RESOURCE_REWARD_TYPE)
+        types.add(TEMP_EVO_BRANCH_RESOURCE_REWARD_TYPE)
+      } else if (prefix === 'u' && Number.isFinite(Number(key.slice(1)))) {
+        types.add(Number(key.slice(1)))
+      } else hasUnknown = true
+    })
+  })
+  return { types: [...types], hasUnknown }
 }
 
 /**
@@ -77,12 +121,18 @@ function expandTaskFilters(filters, taskConditions) {
  *
  * @param {Record<string, any>} rawFilters args.filters
  * @param {Record<string, any>} [eventInvasions] state.event.invasions (grunt→reward map, used for grunt-class exclusion)
- * @param {Record<string, {rewards?: string[]}>} [taskConditions] state.db.taskConditions, used to expand task-primary keys into reward keys
+ * @param {Record<string, any> | any[]} [questRewardTypes] masterfile quest reward types, used for a safe task-only Golbat superset
+ * @param {Record<string, {rewards?: string[]}>} [taskConditions] live task catalogue, used to include reward types newer than the masterfile
  * @returns {object[]}
  */
-function buildPokestopDnfFilters(rawFilters, eventInvasions, taskConditions) {
+function buildPokestopDnfFilters(
+  rawFilters,
+  eventInvasions,
+  questRewardTypes,
+  taskConditions,
+) {
   if (!rawFilters || typeof rawFilters !== 'object') return []
-  const filters = expandTaskFilters(rawFilters, taskConditions)
+  const { filters, hasBroadTask } = expandTaskFilters(rawFilters)
   const {
     onlyAllPokestops,
     onlyArEligible,
@@ -120,6 +170,24 @@ function buildPokestopDnfFilters(rawFilters, eventInvasions, taskConditions) {
   // Golbat cannot narrow on the background ID itself. Fetch every encounter
   // quest as a safe superset; secondaryFilter verifies the non-zero ID.
   if (onlyShowBackgrounds) typeOnly.add(7)
+
+  // Golbat exposes reward fields in its DNF but not task title/target. Fetch
+  // every canonical quest reward type for an unnarrowed task and let the shared
+  // secondary filter perform the exact task match. Union the masterfile with
+  // live observations so a newly introduced generic reward works before its
+  // metadata ships. Missing/unknown metadata fails open to match-all.
+  if (onlyQuests && hasBroadTask) {
+    const observed = getObservedTaskRewardTypes(taskConditions)
+    if (observed.hasUnknown) return []
+    const allRewardTypes = [
+      ...new Set([
+        ...getQuestRewardTypeIds(questRewardTypes),
+        ...observed.types,
+      ]),
+    ]
+    if (!allRewardTypes.length) return []
+    allRewardTypes.forEach((type) => typeOnly.add(type))
+  }
 
   Object.keys(filters).forEach((key) => {
     if (typeof key !== 'string' || key.length === 0) return
@@ -193,6 +261,9 @@ function buildPokestopDnfFilters(rawFilters, eventInvasions, taskConditions) {
       }
       case 'h':
         if (Number.isFinite(n)) contestPokemonType.push(n)
+        break
+      case 'k':
+        // Task filters are handled above; never reinterpret them as rewards.
         break
       default: {
         // "<pokemon>[-<form>]" = quest reward type 7 (pokemon encounter).

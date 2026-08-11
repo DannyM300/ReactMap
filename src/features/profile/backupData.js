@@ -48,16 +48,29 @@ function getDifference(value, defaults) {
 }
 
 /**
- * Produces a JSON-safe profile payload. Filter values matching the current
- * server defaults are omitted because useMapData merges those defaults back in
- * when a profile is loaded.
+ * Produces a JSON-safe profile payload. Only unchanged, dynamically generated
+ * task filters are omitted; useMapData restores those current server defaults
+ * when a profile is loaded. Every pre-existing filter category remains a full
+ * snapshot, so changing server defaults later cannot alter unrelated settings
+ * in an older profile.
  *
  * @param {Record<string, any>} state
  * @param {Record<string, any>} defaultFilters
  */
 export function createBackupData(state, defaultFilters) {
   const backup = JSON.parse(JSON.stringify(state))
-  backup.filters =
-    getDifference(backup.filters || {}, defaultFilters || {}) || {}
+  const taskFilters = backup.filters?.pokestops?.filter
+  const defaultTaskFilters = defaultFilters?.pokestops?.filter
+  if (taskFilters && defaultTaskFilters) {
+    Object.keys(taskFilters).forEach((key) => {
+      if (
+        key.startsWith('k') &&
+        Object.prototype.hasOwnProperty.call(defaultTaskFilters, key) &&
+        getDifference(taskFilters[key], defaultTaskFilters[key]) === undefined
+      ) {
+        delete taskFilters[key]
+      }
+    })
+  }
   return backup
 }

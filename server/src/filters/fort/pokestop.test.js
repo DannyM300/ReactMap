@@ -3,17 +3,9 @@ const assert = require('node:assert/strict')
 
 const { buildPokestopDnfFilters } = require('./pokestop')
 
-const TASK_CONDITIONS = {
-  'kcatch_pokemon-10': {
-    title: 'catch_pokemon',
-    target: 10,
-    rewards: ['7', 'q1', 'a633-2291'],
-  },
-}
+const QUEST_REWARD_TYPES = { 1: {}, 2: {}, 3: {}, 4: {}, 7: {}, 9: {} }
 
-test('a task-only filter (no taskConditions passed) produces no quest clauses', () => {
-  // Without the third argument, expandTaskFilters is a no-op - the task key
-  // is dropped by the switch's default case, same as the original bug.
+test('a broad task falls back to match-all if reward metadata is unavailable', () => {
   const filters = {
     onlyQuests: true,
     'kcatch_pokemon-10': { all: false, adv: '' },
@@ -22,25 +14,13 @@ test('a task-only filter (no taskConditions passed) produces no quest clauses', 
   assert.deepEqual(clauses, [])
 })
 
-test('an unnarrowed enabled task expands to every reward it can grant', () => {
+test('an unnarrowed task fetches every quest type, not its previous rewards', () => {
   const filters = {
     onlyQuests: true,
     'kcatch_pokemon-10': { all: false, adv: '' },
   }
-  const clauses = buildPokestopDnfFilters(filters, {}, TASK_CONDITIONS)
-  // '7-0' -> encounter (type 7), 'q1' -> item (type 2). 'a633-2291' is a
-  // rocket-reward key, which only ever produces clauses under onlyInvasions,
-  // not onlyQuests - so it correctly contributes nothing here.
-  assert.deepEqual(
-    clauses.sort((a, b) => a.quest_reward_type[0] - b.quest_reward_type[0]),
-    [
-      { quest_reward_type: [2], quest_reward_item_id: [1] },
-      {
-        quest_reward_type: [7],
-        quest_reward_pokemon: [{ pokemon_id: 7, form: 0 }],
-      },
-    ],
-  )
+  const clauses = buildPokestopDnfFilters(filters, {}, QUEST_REWARD_TYPES)
+  assert.deepEqual(clauses, [{ quest_reward_type: [1, 2, 3, 4, 7, 9] }])
 })
 
 test('a task narrowed via .adv expands to only the selected rewards', () => {
@@ -48,7 +28,7 @@ test('a task narrowed via .adv expands to only the selected rewards', () => {
     onlyQuests: true,
     'kcatch_pokemon-10': { all: false, adv: 'q1' },
   }
-  const clauses = buildPokestopDnfFilters(filters, {}, TASK_CONDITIONS)
+  const clauses = buildPokestopDnfFilters(filters, {}, QUEST_REWARD_TYPES)
   assert.deepEqual(clauses, [
     { quest_reward_type: [2], quest_reward_item_id: [1] },
   ])
@@ -59,52 +39,92 @@ test('.all on a task bypasses narrowing, same as reward filters', () => {
     onlyQuests: true,
     'kcatch_pokemon-10': { all: true, adv: 'q1' },
   }
-  const clauses = buildPokestopDnfFilters(filters, {}, TASK_CONDITIONS)
-  assert.deepEqual(
-    clauses.sort((a, b) => a.quest_reward_type[0] - b.quest_reward_type[0]),
-    [
-      { quest_reward_type: [2], quest_reward_item_id: [1] },
-      {
-        quest_reward_type: [7],
-        quest_reward_pokemon: [{ pokemon_id: 7, form: 0 }],
-      },
-    ],
-  )
+  const clauses = buildPokestopDnfFilters(filters, {}, QUEST_REWARD_TYPES)
+  assert.deepEqual(clauses, [{ quest_reward_type: [1, 2, 3, 4, 7, 9] }])
 })
 
 test('an explicit reward filter already present is not overridden by expansion', () => {
   const filters = {
     onlyQuests: true,
-    'kcatch_pokemon-10': { all: false, adv: '' },
+    'kcatch_pokemon-10': { all: false, adv: 'q2' },
     // User separately narrowed the reward filter itself to a specific task -
     // expansion must not clobber that with a blank synthetic entry.
     q1: { all: false, adv: 'other_task__5' },
   }
-  const clauses = buildPokestopDnfFilters(filters, {}, TASK_CONDITIONS)
-  // Both q1 (explicit) and 7-0 (synthesized) still produce clauses - the
-  // point is q1's *filter object* wasn't overwritten, which this test can't
-  // directly observe from clauses alone, but the item clause still appearing
-  // (rather than vanishing) confirms expansion didn't break the existing key.
+  const clauses = buildPokestopDnfFilters(filters, {}, QUEST_REWARD_TYPES)
   const itemClause = clauses.find((c) => c.quest_reward_type?.[0] === 2)
   assert.deepEqual(itemClause, {
     quest_reward_type: [2],
-    quest_reward_item_id: [1],
+    quest_reward_item_id: [1, 2],
   })
 })
 
-test('an unknown task key with no taskConditions entry expands to nothing, quietly', () => {
+test('a malformed task key is ignored instead of becoming a pokemon filter', () => {
+  const clauses = buildPokestopDnfFilters(
+    { onlyQuests: true, kinvalid: { all: false, adv: '' } },
+    {},
+    QUEST_REWARD_TYPES,
+  )
+  assert.deepEqual(clauses, [])
+})
+
+test('a previously unseen task remains filterable across reward rotations', () => {
   const filters = {
     onlyQuests: true,
     'kmystery_task-1': { all: false, adv: '' },
   }
-  const clauses = buildPokestopDnfFilters(filters, {}, TASK_CONDITIONS)
-  assert.deepEqual(clauses, [])
+  const clauses = buildPokestopDnfFilters(filters, {}, QUEST_REWARD_TYPES)
+  assert.deepEqual(clauses, [{ quest_reward_type: [1, 2, 3, 4, 7, 9] }])
+})
+
+test('a live reward type newer than the masterfile is included', () => {
+  const filters = {
+    onlyQuests: true,
+    'knew_task-1': { all: false, adv: '' },
+  }
+  const taskConditions = {
+    'knew_task-1': { rewards: ['u99'] },
+  }
+  const clauses = buildPokestopDnfFilters(
+    filters,
+    {},
+    QUEST_REWARD_TYPES,
+    taskConditions,
+  )
+  assert.deepEqual(clauses, [{ quest_reward_type: [1, 2, 3, 4, 7, 9, 99] }])
+})
+
+test('an unknown live reward shape fails open to match-all', () => {
+  const filters = {
+    onlyQuests: true,
+    'kfuture_task-1': { all: false, adv: '' },
+  }
+  const taskConditions = {
+    'kfuture_task-1': { rewards: ['future-format'] },
+  }
+  assert.deepEqual(
+    buildPokestopDnfFilters(filters, {}, QUEST_REWARD_TYPES, taskConditions),
+    [],
+  )
+})
+
+test('observed mega task rewards cover both supported reward encodings', () => {
+  const filters = {
+    onlyQuests: true,
+    'kpower_up-1': { all: false, adv: '' },
+  }
+  const taskConditions = {
+    'kpower_up-1': { rewards: ['m6-25'] },
+  }
+  assert.deepEqual(buildPokestopDnfFilters(filters, {}, {}, taskConditions), [
+    { quest_reward_type: [12, 20] },
+  ])
 })
 
 test('a disabled task key (absent from filters) contributes nothing', () => {
   // Matches the wire contract: disabled filters are never sent at all.
   const filters = { onlyQuests: true }
-  const clauses = buildPokestopDnfFilters(filters, {}, TASK_CONDITIONS)
+  const clauses = buildPokestopDnfFilters(filters, {}, QUEST_REWARD_TYPES)
   assert.deepEqual(clauses, [])
 })
 
@@ -113,7 +133,7 @@ test('task expansion respects onlyQuests being off, same as any reward key', () 
     onlyQuests: false,
     'kcatch_pokemon-10': { all: false, adv: '' },
   }
-  const clauses = buildPokestopDnfFilters(filters, {}, TASK_CONDITIONS)
+  const clauses = buildPokestopDnfFilters(filters, {}, QUEST_REWARD_TYPES)
   assert.deepEqual(clauses, [])
 })
 

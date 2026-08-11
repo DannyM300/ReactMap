@@ -14,9 +14,17 @@
  * @param {number} examined all forts (every type) scanned in the viewport (res.examined)
  * @param {number} returned forts of this type DNF returned (res.<type>.length)
  * @param {number} final forts left after secondaryFilter
+ * @param {{ total?: number, skipped?: number }} [scan] raw Golbat envelope counters
  * @returns {string}
  */
-function describeDnfNarrowing(label, clauses, examined, returned, final) {
+function describeDnfNarrowing(
+  label,
+  clauses,
+  examined,
+  returned,
+  final,
+  scan = {},
+) {
   const residual = returned - final
   // Compact per-clause shape (field[listLen|value]) so a broad clause is
   // visible — e.g. a quest_reward_type[1] with the exact amount dropped, or a
@@ -35,7 +43,13 @@ function describeDnfNarrowing(label, clauses, examined, returned, final) {
         )
         .join(' OR ')
     : 'match-all'
-  return `[${label}] DNF(${clauses.length}): ${returned} matched -> ${final} after secondaryFilter (-${residual} residual) | ${shape} | ${examined} scanned (all types)`
+  const envelope = [
+    Number.isFinite(scan.total) ? `${scan.total} total` : '',
+    Number.isFinite(scan.skipped) ? `${scan.skipped} skipped` : '',
+  ]
+    .filter(Boolean)
+    .join(', ')
+  return `[${label}] DNF(${clauses.length}): ${returned} matched -> ${final} after secondaryFilter (-${residual} residual) | ${shape} | ${examined} scanned (all types)${envelope ? ` | ${envelope}` : ''}`
 }
 
 module.exports = { describeDnfNarrowing }

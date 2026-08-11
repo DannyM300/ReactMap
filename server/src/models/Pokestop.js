@@ -36,7 +36,10 @@ const {
 } = require('../utils/questLayerMode')
 const { mapAvailablePokestops } = require('./pokestopAvailableMapper')
 const {
+  addQuestTaskSqlClauses,
   addTaskCondition,
+  getQuestTaskFilters,
+  getQuestTaskKey,
   matchesAdvancedFilter,
   matchesBackgroundQuest,
   matchesQuestRewardFilter,
@@ -340,6 +343,7 @@ class Pokestop extends Model {
       const general = []
       const rocketPokemon = []
       const displayTypes = []
+      const taskFilters = getQuestTaskFilters(args.filters)
       let hasShowcase = false
       // preps arrays for interested objects
       Object.keys(args.filters).forEach((pokestop) => {
@@ -383,6 +387,9 @@ class Pokestop extends Model {
           case 'b':
             displayTypes.push(pokestop.slice(1))
             break
+          case 'k':
+            // Task identity is handled as an exact title+target pair below.
+            break
           default:
             pokemon.push(pokestop.split('-')[0])
             break
@@ -415,6 +422,12 @@ class Pokestop extends Model {
               questTypes
                 .orWhereIn('quest_item_id', items)
                 .orWhereIn('quest_pokemon_id', pokemon)
+              addQuestTaskSqlClauses(
+                questTypes,
+                taskFilters,
+                'quest_title',
+                'quest_target',
+              )
               if (onlyShowBackgrounds) {
                 questTypes.orWhere('quest_reward_type', 7)
               }
@@ -422,6 +435,12 @@ class Pokestop extends Model {
                 questTypes
                   .orWhereIn('alternative_quest_item_id', items)
                   .orWhereIn('alternative_quest_pokemon_id', pokemon)
+                addQuestTaskSqlClauses(
+                  questTypes,
+                  taskFilters,
+                  'alternative_quest_title',
+                  'alternative_quest_target',
+                )
                 if (onlyShowBackgrounds) {
                   questTypes.orWhere('alternative_quest_reward_type', 7)
                 }
@@ -803,6 +822,7 @@ class Pokestop extends Model {
         const dnf = buildPokestopDnfFilters(
           args.filters,
           state.event.invasions,
+          state.event.masterfile.questRewardTypes,
           state.db.taskConditions,
         )
         // Endpoint rows always carry BOTH quest layers, so resolve the layer
@@ -902,6 +922,7 @@ class Pokestop extends Model {
               res.examined,
               res.pokestops.length,
               final.length,
+              { total: res.total, skipped: res.skipped },
             ),
           )
           return final
@@ -1209,7 +1230,10 @@ class Pokestop extends Model {
             // specific reward keys instead of specific task conditions.
             // Additive - either "this reward is wanted" or "this task is
             // wanted" can surface the quest.
-            const taskKey = `k${quest.quest_title}-${quest.quest_target}`
+            const taskKey = getQuestTaskKey(
+              quest.quest_title,
+              quest.quest_target,
+            )
             const matchesFilter =
               matchesBackgroundQuest(
                 filters.onlyShowBackgrounds,
@@ -1221,7 +1245,7 @@ class Pokestop extends Model {
                 questCondition,
                 quest.quest_background,
               ) ||
-              matchesAdvancedFilter(filters[taskKey], newQuest.key)
+              (taskKey && matchesAdvancedFilter(filters[taskKey], newQuest.key))
             if (
               quest.quest_timestamp >= midnight &&
               (filters.onlyAllPokestops || matchesFilter)
@@ -1382,7 +1406,8 @@ class Pokestop extends Model {
         // is a task-primary filter key, letting a user filter by task and
         // optionally narrow to specific reward keys, the reverse of the
         // reward-primary `.adv` narrowing above.
-        finalList.add(addTaskCondition(taskConditions, key, title, target))
+        const taskKey = addTaskCondition(taskConditions, key, title, target)
+        if (taskKey) finalList.add(taskKey)
       }
       finalList.add(key)
     }

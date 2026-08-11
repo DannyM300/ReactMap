@@ -524,6 +524,7 @@ class Gym extends Model {
               res.examined,
               res.gyms.length,
               final.length,
+              { total: res.total, skipped: res.skipped },
             ),
           )
           // Display cap, applied after the local gates (mirrors SQL's

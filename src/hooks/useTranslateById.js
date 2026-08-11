@@ -82,13 +82,15 @@ export function useTranslateById(options = {}) {
             return i18n.t(`grunt${alt ? '_a' : ''}_${id.slice(1)}`)
           case 'k': {
             // quest tasks
-            const match = id.slice(1).match(/^(.+)-(\d+)$/)
-            if (!match) return ''
-            const [, taskTitle, taskTarget] = match
+            const separator = id.lastIndexOf('-')
+            if (separator <= 1 || separator === id.length - 1) return ''
+            const taskTitle = id.slice(1, separator)
+            const taskTarget = Number(id.slice(separator + 1))
+            if (!Number.isFinite(taskTarget)) return ''
             const normalized = `quest_title_${taskTitle.toLowerCase()}`
             return i18n.i18n.exists(normalized)
-              ? i18n.t(normalized, { amount_0: Number(taskTarget) })
-              : ''
+              ? i18n.t(normalized, { amount_0: taskTarget })
+              : taskTitle
           }
           case 'l':
             // lures

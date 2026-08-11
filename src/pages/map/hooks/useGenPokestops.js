@@ -8,6 +8,7 @@ export function useGenPokestops() {
   const pokemon = useMemory((s) => s.masterfile.pokemon)
   const pokestops = useMemory((s) => s.filters.pokestops)
   const categories = useMemory((s) => s.menus.pokestops.categories)
+  const taskConditions = useMemory((s) => s.available.taskConditions)
 
   useEffect(() => {
     /** @type {import('@rm/types').ClientFilterObj} */
@@ -182,9 +183,9 @@ export function useGenPokestops() {
             break
           case 'k':
             if (tempObj.tasks) {
-              const match = id.slice(1).match(/^(.+)-(\d+)$/)
-              if (match) {
-                const [, taskTitle, taskTarget] = match
+              const task = taskConditions[id]
+              if (task) {
+                const { title: taskTitle, target: taskTarget } = task
                 const normalized = `quest_title_${taskTitle.toLowerCase()}`
                 const name = i18n.exists(normalized)
                   ? t(normalized, { amount_0: Number(taskTarget) })
@@ -320,5 +321,5 @@ export function useGenPokestops() {
     useMemory.setState((prev) => ({
       menuFilters: { ...prev.menuFilters, ...tempObj },
     }))
-  }, [pokemon, pokestops, categories, t, i18n])
+  }, [pokemon, pokestops, categories, taskConditions, t, i18n])
 }
