@@ -1,6 +1,7 @@
 // @ts-check
 
 const { addTaskCondition } = require('../filters/pokestop/questTaskMatch')
+
 /**
  * Pure mapper for Golbat's `GET /api/pokestop/available` response.
  *
