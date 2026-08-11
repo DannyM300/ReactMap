@@ -13,6 +13,7 @@ const { state } = require('../src/services/state')
 const {
   ROCKET_POKEMON_FILTER_EXCLUDED_CHARACTERS,
   collapseRocketPokemonFilterKeys,
+  getCanonicalRocketPokemonFilterKey,
   getRocketPokemonFilterKey,
   isRocketPokemonFilterExcluded,
 } = require('../src/utils/rocketPokemonFiltering')
@@ -38,9 +39,29 @@ const invasions = {
 const GIOVANNI_AND_DECOY_GRUNT_TYPES = [44, 45, 46]
 
 const previousInvasions = state.event.invasions
+const previousRocketMasterfile = state.event.masterfile
 
-before(() => state.event.setInvasions(invasions))
-after(() => state.event.setInvasions(previousInvasions))
+before(() => {
+  state.event.setInvasions(invasions)
+  state.event.masterfile = {
+    ...previousRocketMasterfile,
+    pokemon: {
+      10: { defaultFormId: 0 },
+      19: { defaultFormId: 0 },
+      20: { defaultFormId: 0 },
+      21: { defaultFormId: 0 },
+      22: { defaultFormId: 0 },
+      23: { defaultFormId: 0 },
+      56: { defaultFormId: 999 },
+      643: { defaultFormId: 0 },
+      633: { defaultFormId: 2291 },
+    },
+  }
+})
+after(() => {
+  state.event.setInvasions(previousInvasions)
+  state.event.masterfile = previousRocketMasterfile
+})
 
 test('Rocket Pokemon filter policy excludes leaders, Giovanni, and Decoys', () => {
   assert.deepEqual(
@@ -80,6 +101,14 @@ test('Rocket Pokemon keys preserve explicit forms and omit unknown forms', () =>
   )
 })
 
+test('scanner form zero resolves only when the masterfile knows the default', () => {
+  assert.equal(getCanonicalRocketPokemonFilterKey(56, 0, 999), 'a56-999')
+  assert.equal(getCanonicalRocketPokemonFilterKey(19, 0, 0), 'a19-0')
+  assert.equal(getCanonicalRocketPokemonFilterKey(9999, 0), 'a9999')
+  assert.equal(getCanonicalRocketPokemonFilterKey(37, 56, 55), 'a37-56')
+  assert.equal(getCanonicalRocketPokemonFilterKey(37, null, 55), 'a37')
+})
+
 test('unknown Rocket forms match any exact sibling or a species-wide filter', () => {
   assert.equal(Pokestop.hasRocketPokemonFilter({ 'a633-0': true }, 633), true)
   assert.equal(
@@ -91,6 +120,10 @@ test('unknown Rocket forms match any exact sibling or a species-wide filter', ()
 
   assert.equal(
     Pokestop.hasRocketPokemonFilter({ 'a633-0': true }, 633, 0),
+    false,
+  )
+  assert.equal(
+    Pokestop.hasRocketPokemonFilter({ 'a633-2291': true }, 633, 0),
     true,
   )
   assert.equal(Pokestop.hasRocketPokemonFilter({ a633: true }, 633, 0), true)
@@ -424,7 +457,7 @@ test('available mapper keeps invasion keys but omits rewards for 44-46', () => {
         apiInvasion(46, 69),
       ],
     },
-    { invasions },
+    { invasions, pokemon: state.event.masterfile.pokemon },
   )
 
   assert.equal(available.includes('a19-0'), true)
@@ -436,7 +469,7 @@ test('available mapper keeps invasion keys but omits rewards for 44-46', () => {
   })
 })
 
-test('available mapper distinguishes unknown and explicit zero forms', () => {
+test('available mapper canonicalizes zero and preserves unknown forms', () => {
   const { available } = mapAvailablePokestops(
     {
       invasions: [
@@ -459,12 +492,60 @@ test('available mapper distinguishes unknown and explicit zero forms', () => {
           thirdReward: false,
         },
       },
+      pokemon: { 19: { defaultFormId: 45 } },
     },
   )
 
-  assert.equal(available.includes('a19-0'), true)
+  assert.equal(available.includes('a19-45'), true)
+  assert.equal(available.includes('a19-0'), false)
   assert.equal(available.includes('a20'), true)
   assert.equal(available.includes('a20-0'), false)
+})
+
+test('live Golbat form-zero cases normalize without collapsing real alternates', () => {
+  const observed = [
+    [56, 0],
+    [92, 0],
+    [276, 0],
+    [633, 0],
+    [27, 52],
+    [19, 46],
+    [37, 56],
+  ]
+  const pokemon = {
+    19: { defaultFormId: 45 },
+    27: { defaultFormId: 51 },
+    37: { defaultFormId: 55 },
+    56: { defaultFormId: 999 },
+    92: { defaultFormId: 1038 },
+    276: { defaultFormId: 1400 },
+    633: { defaultFormId: 2291 },
+  }
+  const { available } = mapAvailablePokestops(
+    {
+      invasions: observed.map(([pokemonId, form]) => ({
+        character: 1,
+        display_type: 1,
+        confirmed: true,
+        slot1_pokemon_id: pokemonId,
+        slot1_form: form,
+      })),
+    },
+    { invasions: { 1: { firstReward: true } }, pokemon },
+  )
+
+  assert.deepEqual(
+    available.filter((key) => key.startsWith('a')).sort(),
+    [
+      'a19-46',
+      'a27-52',
+      'a276-1400',
+      'a37-56',
+      'a56-999',
+      'a633-2291',
+      'a92-1038',
+    ].sort(),
+  )
 })
 
 test('SQL availability accepts partial lineups and community-only sources', async (t) => {

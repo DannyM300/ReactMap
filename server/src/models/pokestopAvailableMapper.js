@@ -56,6 +56,7 @@ const { addTaskCondition } = require('../filters/pokestop/questTaskMatch')
  *
  * @typedef {object} MapAvailablePokestopsCtx
  * @property {Record<number, InvasionRewardConfig>} invasions
+ * @property {Record<number, {defaultFormId?: number}>} [pokemon]
  * @property {boolean} [includeBaseQuests] include AR (`with_ar:true`) quests; default true
  * @property {boolean} [includeAltQuests] include non-AR (`with_ar:false`) quests; default true
  *
@@ -64,7 +65,7 @@ const { addTaskCondition } = require('../filters/pokestop/questTaskMatch')
  */
 
 const {
-  getRocketPokemonFilterKey,
+  getCanonicalRocketPokemonFilterKey,
   isRocketPokemonFilterExcluded,
 } = require('../utils/rocketPokemonFiltering')
 
@@ -205,13 +206,31 @@ function mapAvailablePokestops(api, ctx) {
       // mirroring the SQL path which reads confirmed slots 1/2/3.
       const cfg = ctx.invasions?.[character]
       if (slot1_pokemon_id > 0 && cfg?.firstReward) {
-        available.add(getRocketPokemonFilterKey(slot1_pokemon_id, slot1_form))
+        available.add(
+          getCanonicalRocketPokemonFilterKey(
+            slot1_pokemon_id,
+            slot1_form,
+            ctx.pokemon?.[slot1_pokemon_id]?.defaultFormId,
+          ),
+        )
       }
       if (slot2_pokemon_id > 0 && cfg?.secondReward) {
-        available.add(getRocketPokemonFilterKey(slot2_pokemon_id, slot2_form))
+        available.add(
+          getCanonicalRocketPokemonFilterKey(
+            slot2_pokemon_id,
+            slot2_form,
+            ctx.pokemon?.[slot2_pokemon_id]?.defaultFormId,
+          ),
+        )
       }
       if (slot3_pokemon_id > 0 && cfg?.thirdReward) {
-        available.add(getRocketPokemonFilterKey(slot3_pokemon_id, slot3_form))
+        available.add(
+          getCanonicalRocketPokemonFilterKey(
+            slot3_pokemon_id,
+            slot3_form,
+            ctx.pokemon?.[slot3_pokemon_id]?.defaultFormId,
+          ),
+        )
       }
     }
   })

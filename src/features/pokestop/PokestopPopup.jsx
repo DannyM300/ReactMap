@@ -471,6 +471,7 @@ const MenuActions = ({
                   invasion[slot.id],
                   invasion[slot.form],
                   filters.pokestops.filter,
+                  masterfile.pokemon?.[invasion[slot.id]]?.defaultFormId,
                 ).forEach((key) => encounters.add(key))
                 return
               }
@@ -480,6 +481,7 @@ const MenuActions = ({
                   pokemon.id,
                   pokemon.form,
                   filters.pokestops.filter,
+                  masterfile.pokemon?.[pokemon.id]?.defaultFormId,
                 ).forEach((key) => encounters.add(key))
               })
             })

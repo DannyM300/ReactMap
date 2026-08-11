@@ -21,6 +21,7 @@ const {
 const { filterRTree } = require('../utils/filterRTree')
 const {
   ROCKET_POKEMON_FILTER_EXCLUDED_CHARACTERS,
+  getCanonicalRocketPokemonFilterKey,
   getEnabledRocketPokemonSpecies,
   getRocketPokemonFilterKey,
   isRocketPokemonFilterExcluded,
@@ -994,7 +995,11 @@ class Pokestop extends Model {
   ) {
     if (!pokemonId) return false
     const speciesKey = getRocketPokemonFilterKey(pokemonId)
-    const exactKey = getRocketPokemonFilterKey(pokemonId, formId)
+    const exactKey = getCanonicalRocketPokemonFilterKey(
+      pokemonId,
+      formId,
+      state.event.masterfile.pokemon?.[pokemonId]?.defaultFormId,
+    )
     if (filters[exactKey] || filters[speciesKey]) return true
 
     // An unknown community form is a potential match for any selected exact
@@ -1360,6 +1365,7 @@ class Pokestop extends Model {
           })
           const result = mapAvailablePokestops(res, {
             invasions: state.event.invasions,
+            pokemon: state.event.masterfile.pokemon,
             includeBaseQuests: questLayer !== 'without_ar',
             includeAltQuests: questLayer !== 'with_ar',
           })
@@ -1836,25 +1842,31 @@ class Pokestop extends Model {
               const fullGrunt = state.event.invasions[reward.grunt_type]
               if (fullGrunt?.firstReward && reward.slot_1_pokemon_id > 0) {
                 finalList.add(
-                  getRocketPokemonFilterKey(
+                  getCanonicalRocketPokemonFilterKey(
                     reward.slot_1_pokemon_id,
                     reward.slot_1_form,
+                    state.event.masterfile.pokemon?.[reward.slot_1_pokemon_id]
+                      ?.defaultFormId,
                   ),
                 )
               }
               if (fullGrunt?.secondReward && reward.slot_2_pokemon_id > 0) {
                 finalList.add(
-                  getRocketPokemonFilterKey(
+                  getCanonicalRocketPokemonFilterKey(
                     reward.slot_2_pokemon_id,
                     reward.slot_2_form,
+                    state.event.masterfile.pokemon?.[reward.slot_2_pokemon_id]
+                      ?.defaultFormId,
                   ),
                 )
               }
               if (fullGrunt?.thirdReward && reward.slot_3_pokemon_id > 0) {
                 finalList.add(
-                  getRocketPokemonFilterKey(
+                  getCanonicalRocketPokemonFilterKey(
                     reward.slot_3_pokemon_id,
                     reward.slot_3_form,
+                    state.event.masterfile.pokemon?.[reward.slot_3_pokemon_id]
+                      ?.defaultFormId,
                   ),
                 )
               }

@@ -32,6 +32,48 @@ const getRocketPokemonFilterKey = (pokemonId, form) => {
 }
 
 /**
+ * Resolves scanner form values into the same key used by the masterfile.
+ * Golbat uses `0` as an unset sentinel for some Pokemon whose real default
+ * form is non-zero. Preserve authoritative non-zero forms, translate that
+ * sentinel when a default is known, and use a species-wide key when it is not.
+ * @param {number|string|null|undefined} pokemonId
+ * @param {number|string|null|undefined} scannerForm
+ * @param {number|string|null|undefined} defaultForm
+ * @returns {string}
+ */
+const getCanonicalRocketPokemonFilterKey = (
+  pokemonId,
+  scannerForm,
+  defaultForm,
+) => {
+  const speciesKey = getRocketPokemonFilterKey(pokemonId)
+  if (!speciesKey) return ''
+
+  const hasScannerForm =
+    scannerForm !== null && scannerForm !== undefined && scannerForm !== ''
+  const numericScannerForm = Number(scannerForm)
+  if (
+    !hasScannerForm ||
+    !Number.isFinite(numericScannerForm) ||
+    numericScannerForm < 0
+  ) {
+    return speciesKey
+  }
+  if (numericScannerForm !== 0) {
+    return getRocketPokemonFilterKey(pokemonId, numericScannerForm)
+  }
+
+  const hasDefaultForm =
+    defaultForm !== null && defaultForm !== undefined && defaultForm !== ''
+  const numericDefaultForm = Number(defaultForm)
+  return hasDefaultForm &&
+    Number.isFinite(numericDefaultForm) &&
+    numericDefaultForm >= 0
+    ? getRocketPokemonFilterKey(pokemonId, numericDefaultForm)
+    : speciesKey
+}
+
+/**
  * Exact Rocket form keys take precedence over a species-wide unknown key.
  * Collapse at the merged availability boundary so a community fallback cannot
  * hide a form observed by a scanner. Malformed legacy keys are discarded.
@@ -73,6 +115,7 @@ const getEnabledRocketPokemonSpecies = (filters) => {
 module.exports = {
   ROCKET_POKEMON_FILTER_EXCLUDED_CHARACTERS,
   collapseRocketPokemonFilterKeys,
+  getCanonicalRocketPokemonFilterKey,
   getEnabledRocketPokemonSpecies,
   getRocketPokemonFilterKey,
   isRocketPokemonFilterExcluded,

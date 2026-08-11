@@ -9,7 +9,7 @@ import { INCIDENT_DISPLAY_TYPES } from './incidentPriority'
 import { resolveShowcaseEventIcon } from './resolveShowcaseEventIcon'
 import {
   getEnabledRocketPokemonFilterKeys,
-  getRocketPokemonFilterKey,
+  getCanonicalRocketPokemonFilterKey,
   isRocketPokemonFilterExcluded,
 } from './rocketPokemonFiltering'
 
@@ -39,7 +39,7 @@ const INVASION_REWARD_SLOTS = [
  * @param {import('@rm/masterfile').Invasion | undefined} gruntData
  * @returns {{ id: number, form?: number }[]}
  */
-function getInvasionRewardCandidates(invasion, gruntData) {
+function getInvasionRewardCandidates(invasion, gruntData, pokemon) {
   if (!invasion.confirmed && Number(invasion.grunt_type) === 44) return []
 
   const candidates = new Map()
@@ -52,9 +52,15 @@ function getInvasionRewardCandidates(invasion, gruntData) {
       hasForm && Number.isFinite(numericForm) && numericForm >= 0
         ? numericForm
         : undefined
-    candidates.set(getRocketPokemonFilterKey(pokemonId, formId), {
+    const key = getCanonicalRocketPokemonFilterKey(
+      pokemonId,
+      formId,
+      pokemon?.[pokemonId]?.defaultFormId,
+    )
+    const canonicalForm = key.match(/^a\d+-(\d+)$/)?.[1]
+    candidates.set(key, {
       id: pokemonId,
-      form: formId,
+      form: canonicalForm === undefined ? undefined : Number(canonicalForm),
     })
   }
   INVASION_REWARD_SLOTS.forEach((slot) => {
@@ -198,6 +204,7 @@ export function usePokestopMarker({
         const rewardCandidates = getInvasionRewardCandidates(
           invasion,
           gruntData,
+          masterfile.pokemon,
         )
         const uniqueReward = rewardCandidates.length === 1
         const showRewardMarker = showInvasionRewardMarker && uniqueReward

@@ -26,6 +26,44 @@ export function getRocketPokemonFilterKey(pokemonId, form) {
 }
 
 /**
+ * Canonicalizes scanner form values against the masterfile default. Some
+ * scanners use form `0` as an unset sentinel even when the default form is a
+ * non-zero ID. Unknown defaults remain species-wide and non-zero forms are
+ * always preserved.
+ */
+export function getCanonicalRocketPokemonFilterKey(
+  pokemonId,
+  scannerForm,
+  defaultForm,
+) {
+  const speciesKey = getRocketPokemonFilterKey(pokemonId)
+  if (!speciesKey) return ''
+
+  const hasScannerForm =
+    scannerForm !== null && scannerForm !== undefined && scannerForm !== ''
+  const numericScannerForm = Number(scannerForm)
+  if (
+    !hasScannerForm ||
+    !Number.isFinite(numericScannerForm) ||
+    numericScannerForm < 0
+  ) {
+    return speciesKey
+  }
+  if (numericScannerForm !== 0) {
+    return getRocketPokemonFilterKey(pokemonId, numericScannerForm)
+  }
+
+  const hasDefaultForm =
+    defaultForm !== null && defaultForm !== undefined && defaultForm !== ''
+  const numericDefaultForm = Number(defaultForm)
+  return hasDefaultForm &&
+    Number.isFinite(numericDefaultForm) &&
+    numericDefaultForm >= 0
+    ? getRocketPokemonFilterKey(pokemonId, numericDefaultForm)
+    : speciesKey
+}
+
+/**
  * Exact form keys take precedence over a species-wide unknown key. Malformed
  * legacy keys are discarded.
  * @param {Iterable<string>} keys
@@ -77,8 +115,13 @@ function getEnabledExactKeysBySpecies(filters) {
  * @param {import('@rm/types').AllFilters['pokestops']['filter']} filters
  * @returns {string[]}
  */
-export function getEnabledRocketPokemonFilterKeys(pokemonId, form, filters) {
-  const exact = getRocketPokemonFilterKey(pokemonId, form)
+export function getEnabledRocketPokemonFilterKeys(
+  pokemonId,
+  form,
+  filters,
+  defaultForm,
+) {
+  const exact = getCanonicalRocketPokemonFilterKey(pokemonId, form, defaultForm)
   const species = getRocketPokemonFilterKey(pokemonId)
   if (!species) return []
 

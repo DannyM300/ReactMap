@@ -126,6 +126,29 @@ export function useMapData(once = false) {
           (key) => getRocketSpecies(key),
         )
 
+        // Golbat can report an unset form as 0 even when the masterfile's
+        // canonical default form is non-zero. The old `-0` tile controlled the
+        // real marker, so carry its user settings to the corrected key before
+        // the obsolete definition is pruned.
+        Object.entries(masterfile.pokemon || {}).forEach(
+          ([pokemonId, pokemon]) => {
+            const defaultFormId = Number(pokemon.defaultFormId)
+            if (!Number.isFinite(defaultFormId) || defaultFormId <= 0) return
+
+            const zeroKey = `a${pokemonId}-0`
+            const canonicalKey = `a${pokemonId}-${defaultFormId}`
+            if (
+              previousPokestopFilters[zeroKey] &&
+              currentPokestopFilters[canonicalKey]
+            ) {
+              newFilters.pokestops.filter[canonicalKey] = {
+                ...newFilters.pokestops.filter[canonicalKey],
+                ...previousPokestopFilters[zeroKey],
+              }
+            }
+          },
+        )
+
         // Availability can switch between a species-wide unknown key and one
         // or more scanner-observed exact forms. Carry user settings to new
         // replacement keys before pruning definitions the server no longer has.
