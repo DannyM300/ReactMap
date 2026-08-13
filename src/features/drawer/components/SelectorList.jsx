@@ -27,11 +27,7 @@ import { BoolToggle } from '@components/inputs/BoolToggle'
 import { GenericSearchMemo } from '@components/inputs/GenericSearch'
 import { StandardItem } from '@components/virtual/StandardItem'
 
-import {
-  getDrawerGridState,
-  setDrawerGridState,
-  useDrawerScrollMemory,
-} from '../hooks/useScrollMemory'
+import { useDrawerScrollMemory } from '../hooks/useScrollMemory'
 
 /**
  * @template {keyof import('@rm/types').Available} T
@@ -138,46 +134,16 @@ function SelectorList({
   }, [translated, search])
 
   // Virtuoso cannot reliably measure a grid inside a hidden tab or a closed
-  // drawer. In particular, reopening the drawer directly onto a persisted tab
-  // leaves that grid mounted with the closed drawer's stale viewport until the
-  // user switches away and back. Only mount the active grid, and read its
-  // latest snapshot as it becomes active so the remount restores its position.
+  // drawer, so only mount the grid for the tab that is actually visible.
   const shouldPersistGridState = drawer && visible
-  const restoreStateFrom = shouldPersistGridState
-    ? getDrawerGridState(listScrollKey)
-    : null
+  // No Virtuoso snapshot save/restore: restoring a snapshot on remount races the
+  // drawer/tab layout and leaves the grid blank - especially once an item is
+  // toggled (the toggled item's state no longer matches the saved snapshot).
+  // Mount fresh every time; the only cost is not remembering scroll position,
+  // negligible for these short, searchable lists.
   const scrollMemory = useDrawerScrollMemory(
     listScrollKey,
     shouldPersistGridState,
-  )
-
-  // The grid only mounts when its tab becomes visible, and restoring the saved
-  // snapshot can land before the drawer/tab finishes laying out - leaving
-  // Virtuoso with a stale zero-size viewport and no rendered items (the blank
-  // that appears on every other open). Nudge a re-measure on the next frame so
-  // layout always wins the race.
-  React.useEffect(() => {
-    if (!shouldPersistGridState) return undefined
-    const raf = requestAnimationFrame(() =>
-      window.dispatchEvent(new Event('resize')),
-    )
-    return () => cancelAnimationFrame(raf)
-  }, [shouldPersistGridState])
-
-  const handleStateChanged = React.useCallback(
-    (state) => {
-      if (
-        !shouldPersistGridState ||
-        !state.viewport.height ||
-        !state.viewport.width ||
-        !state.item.height ||
-        !state.item.width
-      ) {
-        return
-      }
-      setDrawerGridState(listScrollKey, state)
-    },
-    [listScrollKey, shouldPersistGridState],
   )
 
   /** @param {'enable' | 'disable' | 'advanced'} action */
@@ -261,13 +227,7 @@ function SelectorList({
         }
       >
         {shouldPersistGridState && (
-          <VirtualGrid
-            data={items}
-            xs={4}
-            scrollerRef={scrollMemory.ref}
-            restoreStateFrom={restoreStateFrom}
-            stateChanged={handleStateChanged}
-          >
+          <VirtualGrid data={items} xs={4} scrollerRef={scrollMemory.ref}>
             {(_, key) => <StandardItem id={key} category={category} />}
           </VirtualGrid>
         )}
