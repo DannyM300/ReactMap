@@ -151,6 +151,19 @@ function SelectorList({
     shouldPersistGridState,
   )
 
+  // The grid only mounts when its tab becomes visible, and restoring the saved
+  // snapshot can land before the drawer/tab finishes laying out - leaving
+  // Virtuoso with a stale zero-size viewport and no rendered items (the blank
+  // that appears on every other open). Nudge a re-measure on the next frame so
+  // layout always wins the race.
+  React.useEffect(() => {
+    if (!shouldPersistGridState) return undefined
+    const raf = requestAnimationFrame(() =>
+      window.dispatchEvent(new Event('resize')),
+    )
+    return () => cancelAnimationFrame(raf)
+  }, [shouldPersistGridState])
+
   const handleStateChanged = React.useCallback(
     (state) => {
       if (
