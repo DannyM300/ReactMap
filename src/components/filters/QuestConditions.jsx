@@ -5,7 +5,7 @@ import MenuItem from '@mui/material/MenuItem'
 import { useTranslation } from 'react-i18next'
 
 import { useMemory } from '@store/useMemory'
-import { useDeepStore, useStorage } from '@store/useStorage'
+import { useDeepStore } from '@store/useStorage'
 import { QuestTitle } from '@components/QuestTitle'
 import { FCSelect } from '@components/inputs/FCSelect'
 
@@ -16,13 +16,31 @@ import { FCSelect } from '@components/inputs/FCSelect'
  */
 export function QuestConditionSelector({ id }) {
   const { t } = useTranslation()
-  const [value, setValue] = useDeepStore(
-    `filters.pokestops.filter.${id}.adv`,
-    '',
-  )
-  const all = useStorage((s) => !!s.filters.pokestops.filter[id].all)
+  const [filter, setFilter] = useDeepStore(`filters.pokestops.filter.${id}`)
+  const value = filter?.adv || ''
+  const all = !!filter?.all
   const questConditions = useMemory((s) => s.available.questConditions[id])
   const hasQuests = useMemory((s) => s.ui.pokestops?.quests)
+
+  // Prune-only: keep the enabled/all state exactly as-is. Used by the
+  // availability-validation effect below so a reload never auto-enables a
+  // filter just because it carries a (still-valid) narrowing.
+  const pruneAdv = React.useCallback(
+    (adv) => setFilter((prev) => ({ ...prev, adv })),
+    [setFilter],
+  )
+  // A user actively picking conditions should turn the tile blue (enabled +
+  // narrowed), not leave a phantom selection on an off tile. Picking "All"
+  // enables + goes green. Both are also what lets the reward<->task mirror
+  // propagate the choice - a disabled source counts as "nothing selected".
+  const narrowTo = React.useCallback(
+    (adv) => setFilter((prev) => ({ ...prev, adv, enabled: true, all: false })),
+    [setFilter],
+  )
+  const selectAll = React.useCallback(
+    () => setFilter((prev) => ({ ...prev, adv: '', enabled: true, all: true })),
+    [setFilter],
+  )
 
   const [open, setOpen] = React.useState(false)
 
@@ -36,7 +54,7 @@ export function QuestConditionSelector({ id }) {
       // user has quest permissions
       if (!questConditions && value) {
         // condition is no longer available
-        setValue('')
+        pruneAdv('')
       } else {
         // check if the value is still valid
         const filtered = questConditions
@@ -48,11 +66,11 @@ export function QuestConditionSelector({ id }) {
                 ),
               )
           : []
-        setValue(filtered.length ? filtered.join(',') : '')
+        pruneAdv(filtered.length ? filtered.join(',') : '')
       }
     } else {
       // user does not have quest permissions
-      setValue('')
+      pruneAdv('')
     }
   }, [questConditions, id, hasQuests])
 
@@ -79,14 +97,14 @@ export function QuestConditionSelector({ id }) {
           'props' in child &&
           child.props.value === ''
         ) {
-          setValue('')
+          selectAll()
           handleClose()
         } else {
-          setValue(
-            Array.isArray(e.target.value)
-              ? e.target.value.filter(Boolean).join(',')
-              : e.target.value,
-          )
+          const next = Array.isArray(e.target.value)
+            ? e.target.value.filter(Boolean).join(',')
+            : e.target.value
+          if (next) narrowTo(next)
+          else selectAll()
           if (e.target.value.length === 0) handleClose()
         }
       }}

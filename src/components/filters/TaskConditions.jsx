@@ -5,7 +5,7 @@ import MenuItem from '@mui/material/MenuItem'
 import { useTranslation } from 'react-i18next'
 
 import { useMemory } from '@store/useMemory'
-import { useDeepStore, useStorage } from '@store/useStorage'
+import { useDeepStore } from '@store/useStorage'
 import { useTranslateById } from '@hooks/useTranslateById'
 import { FCSelect } from '@components/inputs/FCSelect'
 
@@ -20,13 +20,31 @@ import { FCSelect } from '@components/inputs/FCSelect'
 export function TaskRewardSelector({ id }) {
   const { t } = useTranslation()
   const { t: tId } = useTranslateById()
-  const [value, setValue] = useDeepStore(
-    `filters.pokestops.filter.${id}.adv`,
-    '',
-  )
-  const all = useStorage((s) => !!s.filters.pokestops.filter[id].all)
+  const [filter, setFilter] = useDeepStore(`filters.pokestops.filter.${id}`)
+  const value = filter?.adv || ''
+  const all = !!filter?.all
   const taskRewards = useMemory((s) => s.available.taskConditions[id]?.rewards)
   const hasQuests = useMemory((s) => s.ui.pokestops?.quests)
+
+  // Prune-only: keep the enabled/all state exactly as-is. Used by the
+  // availability-validation effect so a reload never auto-enables a filter
+  // that merely carries a (still-valid) narrowing.
+  const pruneAdv = React.useCallback(
+    (adv) => setFilter((prev) => ({ ...prev, adv })),
+    [setFilter],
+  )
+  // A user actively picking rewards turns the tile blue (enabled + narrowed);
+  // picking "All" enables + goes green. Both are also what lets the
+  // reward<->task mirror propagate the choice - a disabled source counts as
+  // "nothing selected".
+  const narrowTo = React.useCallback(
+    (adv) => setFilter((prev) => ({ ...prev, adv, enabled: true, all: false })),
+    [setFilter],
+  )
+  const selectAll = React.useCallback(
+    () => setFilter((prev) => ({ ...prev, adv: '', enabled: true, all: true })),
+    [setFilter],
+  )
 
   const [open, setOpen] = React.useState(false)
 
@@ -40,17 +58,17 @@ export function TaskRewardSelector({ id }) {
       // user has quest permissions
       if (!taskRewards && value) {
         // reward is no longer available
-        setValue('')
+        pruneAdv('')
       } else {
         // check if the value is still valid
         const filtered = taskRewards
           ? value.split(',').filter((each) => taskRewards.includes(each))
           : []
-        setValue(filtered.length ? filtered.join(',') : '')
+        pruneAdv(filtered.length ? filtered.join(',') : '')
       }
     } else {
       // user does not have quest permissions
-      setValue('')
+      pruneAdv('')
     }
   }, [taskRewards, id, hasQuests])
 
@@ -77,14 +95,14 @@ export function TaskRewardSelector({ id }) {
           'props' in child &&
           child.props.value === ''
         ) {
-          setValue('')
+          selectAll()
           handleClose()
         } else {
-          setValue(
-            Array.isArray(e.target.value)
-              ? e.target.value.filter(Boolean).join(',')
-              : e.target.value,
-          )
+          const next = Array.isArray(e.target.value)
+            ? e.target.value.filter(Boolean).join(',')
+            : e.target.value
+          if (next) narrowTo(next)
+          else selectAll()
           if (e.target.value.length === 0) handleClose()
         }
       }}
