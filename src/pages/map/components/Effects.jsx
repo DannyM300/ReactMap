@@ -8,6 +8,7 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 
 import { useMapData } from '@hooks/useMapData'
 import { useMemory } from '@store/useMemory'
+import { subscribeQuestTaskMirror } from '@services/questTaskMirror'
 
 import { useGenGyms } from '../hooks/useGenGyms'
 import { useGenPokestops } from '../hooks/useGenPokestops'
@@ -20,6 +21,7 @@ export function Effects() {
   const { t } = useTranslation()
 
   useMapData()
+  React.useEffect(() => subscribeQuestTaskMirror(), [])
   useGenGyms()
   useGenPokestops()
   useGenPokemon()
