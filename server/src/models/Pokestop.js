@@ -150,7 +150,17 @@ const applyRocketPokemonFallback = (availableSet) => {
     ROCKET_REWARD_POSITIONS.forEach(({ name, enabled }) => {
       if (!invasionInfo[enabled]) return
       invasionInfo.encounters[name]?.forEach((poke) => {
-        availableSet.add(getRocketPokemonFilterKey(poke.id, poke.form))
+        // Canonicalise here too (not just the confirmed path) so the fallback's
+        // menu key matches what the matcher expects. A form 0 -> masterfile
+        // default; non-zero forms and undefined are unchanged. Keeps the
+        // available list and the matcher in agreement for every form.
+        availableSet.add(
+          getCanonicalRocketPokemonFilterKey(
+            poke.id,
+            poke.form,
+            state.event.masterfile.pokemon?.[poke.id]?.defaultFormId,
+          ),
+        )
       })
     })
   })

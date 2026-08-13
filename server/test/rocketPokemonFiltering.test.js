@@ -109,6 +109,28 @@ test('scanner form zero resolves only when the masterfile knows the default', ()
   assert.equal(getCanonicalRocketPokemonFilterKey(37, null, 55), 'a37')
 })
 
+test('canonical keys never alter a non-zero or brand-new form (never hides a real form)', () => {
+  // Every non-zero form - real, a genuine alternate, or one the masterfile has
+  // never seen - must resolve to exactly the raw key, so a reward can never be
+  // hidden or merged. This is what keeps the (now-canonical) availability
+  // fallback in agreement with the confirmed path and the matcher for all forms.
+  ;[
+    [633, 2291, 2291], // default form
+    [147, 190, 190], // Dratini default
+    [37, 56, 55], // Alolan Vulpix (genuine alternate, must stay separate)
+    [633, 999999, 2291], // brand-new form the masterfile has never seen
+  ].forEach(([id, form, defaultForm]) => {
+    assert.equal(
+      getCanonicalRocketPokemonFilterKey(id, form, defaultForm),
+      getRocketPokemonFilterKey(id, form),
+      `non-zero form ${form} must be preserved verbatim`,
+    )
+  })
+  // Only form 0 is ever rewritten, and only to the known default.
+  assert.equal(getCanonicalRocketPokemonFilterKey(633, 0, 2291), 'a633-2291')
+  assert.equal(getCanonicalRocketPokemonFilterKey(633, 0), 'a633')
+})
+
 test('unknown Rocket forms match any exact sibling or a species-wide filter', () => {
   assert.equal(Pokestop.hasRocketPokemonFilter({ 'a633-0': true }, 633), true)
   assert.equal(
