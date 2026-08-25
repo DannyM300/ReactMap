@@ -123,6 +123,7 @@ const getObservedTaskRewardTypes = (taskConditions) => {
  * @param {Record<string, any>} [eventInvasions] state.event.invasions (grunt→reward map, used for grunt-class exclusion)
  * @param {Record<string, any> | any[]} [questRewardTypes] masterfile quest reward types, used for a safe task-only Golbat superset
  * @param {Record<string, {rewards?: string[]}>} [taskConditions] live task catalogue, used to include reward types newer than the masterfile
+ * @param {Record<number, {defaultFormId?: number}>} [pokemonDefaults] masterfile pokemon (defaultFormId), used to ALSO fetch unset (form 0) stops for a default-form encounter key
  * @returns {object[]}
  */
 function buildPokestopDnfFilters(
@@ -130,6 +131,7 @@ function buildPokestopDnfFilters(
   eventInvasions,
   questRewardTypes,
   taskConditions,
+  pokemonDefaults,
 ) {
   if (!rawFilters || typeof rawFilters !== 'object') return []
   const { filters, hasBroadTask } = expandTaskFilters(rawFilters)
@@ -287,6 +289,19 @@ function buildPokestopDnfFilters(
             ? Number(formPart)
             : 0
         encounterPokemon.push({ pokemon_id: id, form })
+        // The availability builders and the secondaryFilter fold an unset
+        // (form 0) reward onto the species DEFAULT form, so a default-form key
+        // must ALSO fetch the unset stops or they would be hidden. Additive
+        // superset (secondaryFilter confirms the exact reward); a non-default
+        // form never satisfies this, so regional/alt forms are left untouched.
+        const defaultForm = Number(pokemonDefaults?.[id]?.defaultFormId)
+        if (
+          form !== 0 &&
+          Number.isFinite(defaultForm) &&
+          defaultForm === form
+        ) {
+          encounterPokemon.push({ pokemon_id: id, form: 0 })
+        }
         break
       }
     }

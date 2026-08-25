@@ -152,3 +152,39 @@ test('show backgrounds contributes nothing while quests are off', () => {
   })
   assert.deepEqual(clauses, [])
 })
+
+test('a default-form encounter key ALSO fetches the unset (form 0) stops', () => {
+  const clauses = buildPokestopDnfFilters(
+    { onlyQuests: true, '39-987': { all: false, adv: '' } },
+    {},
+    undefined,
+    undefined,
+    { 39: { defaultFormId: 987 } },
+  )
+  const enc = clauses.find((c) => Array.isArray(c.quest_reward_pokemon))
+  assert.deepEqual(enc.quest_reward_pokemon, [
+    { pokemon_id: 39, form: 987 },
+    { pokemon_id: 39, form: 0 },
+  ])
+})
+
+test('a non-default (regional) encounter key does NOT fetch form 0', () => {
+  const clauses = buildPokestopDnfFilters(
+    { onlyQuests: true, '19-46': { all: false, adv: '' } },
+    {},
+    undefined,
+    undefined,
+    { 19: { defaultFormId: 45 } }, // 46 (Alolan) is not the default (45)
+  )
+  const enc = clauses.find((c) => Array.isArray(c.quest_reward_pokemon))
+  assert.deepEqual(enc.quest_reward_pokemon, [{ pokemon_id: 19, form: 46 }])
+})
+
+test('without masterfile defaults a default-form key stays form-exact', () => {
+  const clauses = buildPokestopDnfFilters({
+    onlyQuests: true,
+    '39-987': { all: false, adv: '' },
+  })
+  const enc = clauses.find((c) => Array.isArray(c.quest_reward_pokemon))
+  assert.deepEqual(enc.quest_reward_pokemon, [{ pokemon_id: 39, form: 987 }])
+})

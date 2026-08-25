@@ -87,9 +87,15 @@ const QUEST_REWARD_FILTER_DEFINITIONS = {
       'quest_bread_mode',
     ],
     getKey: (/** @type {QuestReward} */ quest) =>
-      quest.quest_form_id === undefined || quest.quest_form_id === null
-        ? `${quest.quest_pokemon_id}`
-        : `${quest.quest_pokemon_id}-${quest.quest_form_id}`,
+      // Fold an unset form onto the species default so a form-0 stop matches the
+      // merged `<id>-<default>` tile; a genuine non-zero form is preserved. Must
+      // stay in lockstep with the availability builders and the DNF. See
+      // getCanonicalQuestPokemonKey.
+      getCanonicalQuestPokemonKey(
+        quest.quest_pokemon_id,
+        quest.quest_form_id,
+        state.event.masterfile.pokemon?.[quest.quest_pokemon_id]?.defaultFormId,
+      ),
   },
   9: {
     fields: ['xl_candy_pokemon_id', 'xl_candy_amount'],
@@ -838,6 +844,7 @@ class Pokestop extends Model {
           state.event.invasions,
           state.event.masterfile.questRewardTypes,
           state.db.taskConditions,
+          state.event.masterfile.pokemon,
         )
         // Endpoint rows always carry BOTH quest layers, so resolve the layer
         // selection as dual-capable (mirrors getAvailable's override). The SQL
