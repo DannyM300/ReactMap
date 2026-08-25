@@ -26,6 +26,9 @@ const {
   getRocketPokemonFilterKey,
   isRocketPokemonFilterExcluded,
 } = require('../utils/rocketPokemonFiltering')
+const {
+  getCanonicalQuestPokemonKey,
+} = require('../utils/questPokemonFiltering')
 const { mapScanPokestop } = require('./pokestopScanMapper')
 const { getCombinedFortAvailable } = require('../utils/fortAvailable')
 const { buildPokestopDnfFilters } = require('../filters/fort/pokestop')
@@ -1901,9 +1904,17 @@ class Pokestop extends Model {
         default:
           rewards.forEach((reward) =>
             process(
-              reward.form === undefined || reward.form === null
-                ? `${reward.quest_pokemon_id}`
-                : `${reward.quest_pokemon_id}-${reward.form}`,
+              // Fold an unset/absent form onto the masterfile default so a
+              // species reported unset in one quest and with its explicit
+              // default form in another collapses to one tile carrying both
+              // tasks; genuine non-zero forms are preserved. See the endpoint
+              // mapper's §form note and getCanonicalQuestPokemonKey.
+              getCanonicalQuestPokemonKey(
+                reward.quest_pokemon_id,
+                reward.form,
+                state.event.masterfile.pokemon?.[reward.quest_pokemon_id]
+                  ?.defaultFormId,
+              ),
               reward.quest_title,
               reward.quest_target,
             ),

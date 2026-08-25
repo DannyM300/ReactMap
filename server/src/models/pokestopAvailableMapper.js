@@ -1,6 +1,9 @@
 // @ts-check
 
 const { addTaskCondition } = require('../filters/pokestop/questTaskMatch')
+const {
+  getCanonicalQuestPokemonKey,
+} = require('../utils/questPokemonFiltering')
 
 /**
  * Pure mapper for Golbat's `GET /api/pokestop/available` response.
@@ -83,7 +86,7 @@ const {
  * @param {AvailablePokestopQuest} quest
  * @returns {string}
  */
-function questRewardKey(quest) {
+function questRewardKey(quest, ctx) {
   const { reward_type, amount, item_id, pokemon_id, form_id } = quest
   switch (reward_type) {
     case 1:
@@ -95,13 +98,17 @@ function questRewardKey(quest) {
     case 4:
       return `c${pokemon_id}`
     case 7:
-      // §form: the SQL emits a bare `${pokemon_id}` when RDM's JSON
-      // `form_id` was absent, and `${pokemon_id}-${form}` (incl. `-0`) when
-      // present. The endpoint always sends `form_id` as a number (`0` for
-      // absent), so JSON-absence can't be distinguished from a genuine
-      // explicit form 0. Normalize `form_id === 0` to the bare key; a real
-      // explicit-form-0 reward (rare) would diverge from the SQL output.
-      return form_id === 0 ? `${pokemon_id}` : `${pokemon_id}-${form_id}`
+      // §form: fold an unset form (the endpoint's `0` sentinel, or an absent
+      // JSON `form_id`) onto the masterfile default, so a species reported
+      // unset in one quest and with its explicit default form in another
+      // collapses to ONE tile instead of two that split its tasks. A genuine
+      // non-zero form is preserved; an unknown default keeps the bare species
+      // key (matching the prior SQL output). See getCanonicalQuestPokemonKey.
+      return getCanonicalQuestPokemonKey(
+        pokemon_id,
+        form_id,
+        ctx?.pokemon?.[pokemon_id]?.defaultFormId,
+      )
     case 9:
       return `x${pokemon_id}`
     case 12:
@@ -172,7 +179,7 @@ function mapAvailablePokestops(api, ctx) {
     ) {
       return
     }
-    const key = questRewardKey(quest)
+    const key = questRewardKey(quest, ctx)
     // An incomplete reward (e.g. type-20 missing pokemon_id/amount) yields no
     // key — advertise nothing rather than a filter no marker can satisfy.
     if (!key) return
