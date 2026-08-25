@@ -4,6 +4,7 @@
   "save": "Save",
   "reset": "Reset",
   "close": "Close",
+  "save_and_close": "Save & Close",
   "reset_filters": "Reset Filters",
   "pokemon_filters": "Pokémon Filter Settings",
   "gyms_filters": "Gym Filter Settings",

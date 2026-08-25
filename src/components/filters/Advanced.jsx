@@ -48,7 +48,6 @@ export function AdvancedFilter() {
     category ? `filters.${category}.filter.${id}` : `filters.gyms.standard`,
     defaultFilter,
   )
-  const backup = React.useRef(filters)
 
   useAnalytics(`/${category}/${id}`)
   useAnalytics(
@@ -73,13 +72,15 @@ export function AdvancedFilter() {
     [setFilters],
   )
 
-  const toggleClose = (save = false) => {
+  // Edits apply live to the store as you make them, so every close path keeps
+  // them and a dedicated Reset restores defaults. (Previously an outside-click,
+  // Escape, or the top X silently reverted to a snapshot taken on open, which
+  // read as "it didn't save" - only the footer button committed.)
+  const toggleClose = () => {
     useLayoutStore.setState((prev) => ({
       advancedFilter: { ...prev.advancedFilter, open: false, id: '' },
     }))
-    if (!save) {
-      setFilters({ ...backup.current })
-    } else if (id === 'global' && selectedIds?.length && category) {
+    if (id === 'global' && selectedIds?.length && category) {
       applyToAll(filters, category, selectedIds, false)
     }
   }
@@ -93,8 +94,8 @@ export function AdvancedFilter() {
         color: 'primary',
       },
       {
-        name: 'close',
-        action: () => toggleClose(true),
+        name: 'save_and_close',
+        action: () => toggleClose(),
         color: 'secondary',
       },
     ],
@@ -111,10 +112,6 @@ export function AdvancedFilter() {
     [setFilters],
   )
 
-  React.useLayoutEffect(() => {
-    if (open) backup.current = filters
-  }, [open])
-
   if (!id || !category) return null
   const showMoreFilters = category === 'pokemon' && !easyMode
   const showGenderFilter =
@@ -127,7 +124,7 @@ export function AdvancedFilter() {
   return (
     <Dialog
       open={!!open}
-      onClose={() => toggleClose(false)}
+      onClose={() => toggleClose()}
       fullScreen={isMobile && category === 'pokemon'}
     >
       <Header
@@ -139,7 +136,7 @@ export function AdvancedFilter() {
           omitFormSuffix: true,
           showDefaultForms: id.startsWith('a'),
         })}`}
-        action={() => toggleClose(false)}
+        action={() => toggleClose()}
       />
       <DialogContent sx={{ mt: 3 }}>
         <List>
