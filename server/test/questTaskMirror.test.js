@@ -112,6 +112,47 @@ test('a task edit mirrors back onto its reward tiles', async () => {
   })
 })
 
+test('enabled with empty narrowing mirrors as broad, matching server semantics', async () => {
+  const compute = await corePromise
+  const prev = mapWith({})
+  const cur = mapWith({
+    '633-0': { enabled: true, all: false, adv: '' },
+  })
+  const updates = compute(cur, prev, available)
+
+  assert.deepEqual(updates['kcatch_5-5'], {
+    enabled: true,
+    all: false,
+    adv: '633-0',
+  })
+  assert.deepEqual(updates['khatch_1-1'], {
+    enabled: true,
+    all: true,
+    adv: '',
+  })
+})
+
+test('bulk reward changes are accumulated before deriving shared task state', async () => {
+  const compute = await corePromise
+  const prev = mapWith({})
+  const cur = mapWith({
+    '633-0': { enabled: true, all: true, adv: '' },
+    '246-0': { enabled: true, all: true, adv: '' },
+  })
+  const updates = compute(cur, prev, available)
+
+  assert.deepEqual(updates['kcatch_5-5'], {
+    enabled: true,
+    all: true,
+    adv: '',
+  })
+  assert.deepEqual(updates['khatch_1-1'], {
+    enabled: true,
+    all: true,
+    adv: '',
+  })
+})
+
 test('already-consistent input produces no writes', async () => {
   const compute = await corePromise
   // Deino narrowed to catch_5, catch_5 narrowed to Deino - a stable pair.

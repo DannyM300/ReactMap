@@ -32,8 +32,12 @@ const isEnabled = (filter) => !!(filter && filter.enabled)
  */
 const selectedPeersOf = (filter, allPeers) => {
   if (!isEnabled(filter)) return new Set()
-  if (filter.all) return new Set(allPeers)
-  if (!filter.adv) return new Set()
+  // This must use the same broad-match rule as the server: an enabled filter
+  // with no `.adv` value selects every peer, regardless of `.all`. `all` also
+  // bypasses an existing narrowing. Treating the intermediate
+  // `{ enabled: true, all: false, adv: '' }` state as empty made the source
+  // tile stay blue while every mirrored tile was switched off.
+  if (filter.all || !filter.adv) return new Set(allPeers)
   return new Set(String(filter.adv).split(',').filter(Boolean))
 }
 

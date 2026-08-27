@@ -54,6 +54,11 @@ export function SelectorItem({
   const title = t(id)
   const url = useMemory((s) => s.Icons.getIconById(id))
   const isTask = id.startsWith('k')
+  const isMirroredQuest = useMemory(
+    (s) =>
+      category === 'pokestops' &&
+      (isTask || Array.isArray(s.available.questConditions[id])),
+  )
 
   const color = filter?.enabled
     ? filter?.all || !hasAll || easyMode
@@ -63,6 +68,18 @@ export function SelectorItem({
 
   const handleClick = React.useCallback(() => {
     const newFilter = { all: false, enabled: false, ...filter }
+    // Reward and task tiles are two views of the same quest selection. Their
+    // normal tile click is therefore an on/off action; the blue narrowed state
+    // is entered through the advanced selector. Preserve an existing
+    // narrowing when re-enabling, otherwise enable the whole tile (green).
+    // The generic green -> blue -> red cycle creates an empty blue state that
+    // has no peer selection to display consistently on the opposite tab.
+    if (isMirroredQuest) {
+      newFilter.enabled = !newFilter.enabled
+      newFilter.all = newFilter.enabled && !newFilter.adv
+      setFilter(newFilter)
+      return
+    }
     // red => green => blue => red
     if (newFilter.all && hasAll) {
       newFilter.all = false
@@ -74,7 +91,7 @@ export function SelectorItem({
       newFilter.enabled = true
     }
     setFilter(newFilter)
-  }, [filter, setFilter, hasAll, easyMode])
+  }, [filter, setFilter, hasAll, easyMode, isMirroredQuest])
 
   /** @type {import('@mui/material').IconButtonProps['onClick']} */
   const handleIconClick = React.useCallback(
