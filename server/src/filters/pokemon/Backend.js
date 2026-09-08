@@ -4,7 +4,7 @@
 const config = require('@rm/config')
 const { log, TAGS } = require('@rm/logger')
 const { AND_KEYS, BASE_KEYS } = require('./constants')
-const { getWildFilterKey } = require('./getWildFilterKey')
+const { getWildFilterKey, getWildFilterPairs } = require('./getWildFilterKey')
 const {
   deepCompare,
   between,
@@ -269,6 +269,16 @@ class PkmnBackend {
     if (pokemon === undefined && this.id !== 'global') {
       pokemon = [{ id: this.pokemon, form: this.form }]
     }
+    if (pokemon) {
+      pokemon = pokemon.flatMap((entry) => {
+        if (entry.form === undefined) return [entry]
+        return getWildFilterPairs(
+          entry.id,
+          entry.form,
+          state.event.masterfile.pokemon?.[entry.id]?.defaultFormId,
+        )
+      })
+    }
     if (this.mods.onlyLegacy) {
       return dnfifyIvFilter(adv, pokemon)
     }
@@ -362,7 +372,12 @@ class PkmnBackend {
         return true
       if (
         !this.mods.onlyLinkGlobal ||
-        this.id === getWildFilterKey(pokemon.pokemon_id, pokemon.form)
+        this.id ===
+          getWildFilterKey(
+            pokemon.pokemon_id,
+            pokemon.form,
+            state.event.masterfile.pokemon?.[pokemon.pokemon_id]?.defaultFormId,
+          )
       ) {
         if (!this.expertFilter || !this.expertGlobal) return true
         if (this.expertFilter(pokemon)) {

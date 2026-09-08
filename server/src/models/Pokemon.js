@@ -31,6 +31,14 @@ class Pokemon extends Model {
     return 'pokemon'
   }
 
+  static getFilterKey(pokemonId, formId) {
+    return getWildFilterKey(
+      pokemonId,
+      formId,
+      state.event.masterfile.pokemon?.[pokemonId]?.defaultFormId,
+    )
+  }
+
   /**
    * @param {import("@rm/types").Permissions} perms
    * @param {object} args
@@ -52,8 +60,10 @@ class Pokemon extends Model {
 
     Object.entries(args.filters).forEach(([key, filter]) => {
       if (key.includes('-')) {
-        filterMap[key] = new PkmnBackend(
-          key,
+        const [pokemonId, formId] = key.split('-', 2)
+        const filterKey = this.getFilterKey(pokemonId, formId)
+        filterMap[filterKey] = new PkmnBackend(
+          filterKey,
           filter,
           args.filters.onlyIvOr,
           perms,
@@ -308,7 +318,7 @@ class Pokemon extends Model {
     // form checker
     for (let i = 0; i < results.length; i += 1) {
       const pkmn = results[i]
-      const id = getWildFilterKey(pkmn.pokemon_id, pkmn.form)
+      const id = this.getFilterKey(pkmn.pokemon_id, pkmn.form)
       const filter = filterMap[id] || globalFilter
       let noPvp = true
 
@@ -361,7 +371,7 @@ class Pokemon extends Model {
     for (let i = 0; i < pvpResults.length; i += 1) {
       const pkmn = pvpResults[i]
       const filter =
-        filterMap[getWildFilterKey(pkmn.pokemon_id, pkmn.form)] || globalFilter
+        filterMap[this.getFilterKey(pkmn.pokemon_id, pkmn.form)] || globalFilter
       const result = filter.build(pkmn)
       if (filter.valid(result)) {
         finalResults.push(result)
@@ -710,13 +720,13 @@ class Pokemon extends Model {
     const built = filtered
       .map((item) => {
         const filter =
-          filterMap[getWildFilterKey(item.pokemon_id, item.form)] ||
+          filterMap[this.getFilterKey(item.pokemon_id, item.form)] ||
           globalFilter
         return filter.build(item)
       })
       .filter((pkmn) => {
         const filter =
-          filterMap[getWildFilterKey(pkmn.pokemon_id, pkmn.form)] ||
+          filterMap[this.getFilterKey(pkmn.pokemon_id, pkmn.form)] ||
           globalFilter
         return filter.valid(pkmn)
       })
@@ -793,7 +803,7 @@ class Pokemon extends Model {
       (acc, pkmn) => {
         // Wild Ditto reports disguise form ids here, not true Ditto form ids.
         // Normalize them to a single wild-filter key for the Pokémon drawer.
-        const key = getWildFilterKey(pkmn.id, pkmn.form)
+        const key = this.getFilterKey(pkmn.id, pkmn.form)
         acc.available.add(key)
         const current = Number(acc.rarity.get(key) ?? 0)
         const count = Number(pkmn.count ?? 0)

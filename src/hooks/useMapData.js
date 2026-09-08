@@ -215,6 +215,38 @@ export function useMapData(once = false) {
             }
           })
 
+        // Older wild availability snapshots could create both `<id>-0` and
+        // `<id>-<default>` for the same Pokemon. The server now exposes only
+        // the canonical default key; migrate whichever alias was enabled and
+        // remove the stale zero-form setting so disabling "Only Available"
+        // cannot bring the duplicate tile back.
+        Object.entries(masterfile.pokemon || {}).forEach(
+          ([pokemonId, pokemon]) => {
+            if (pokemonId === '132') return
+            const defaultFormId = Number(pokemon.defaultFormId)
+            if (!Number.isFinite(defaultFormId) || defaultFormId <= 0) return
+            const zeroKey = `${pokemonId}-0`
+            const canonicalKey = `${pokemonId}-${defaultFormId}`
+            if (!newFilters.pokemon?.filter?.[canonicalKey]) return
+
+            const zeroSettings = prev.filters.pokemon?.filter?.[zeroKey]
+            const canonicalSettings =
+              prev.filters.pokemon?.filter?.[canonicalKey]
+            const migratedSettings = canonicalSettings?.enabled
+              ? canonicalSettings
+              : zeroSettings?.enabled
+                ? zeroSettings
+                : canonicalSettings || zeroSettings
+            if (migratedSettings) {
+              newFilters.pokemon.filter[canonicalKey] = {
+                ...newFilters.pokemon.filter[canonicalKey],
+                ...migratedSettings,
+              }
+            }
+            delete newFilters.pokemon.filter[zeroKey]
+          },
+        )
+
         // Migration for quest conditions to use target as well
         Object.entries(newFilters?.pokestops?.filter || {}).forEach(
           ([key, filter]) => {

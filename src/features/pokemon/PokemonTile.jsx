@@ -47,7 +47,10 @@ const getGlowStatus = (pkmn, userSettings) => {
  * @returns
  */
 const BasePokemonTile = (pkmn) => {
-  const internalId = getWildFilterId(pkmn.pokemon_id, pkmn.form)
+  const defaultFormId = useMemory(
+    (s) => s.masterfile.pokemon?.[pkmn.pokemon_id]?.defaultFormId,
+  )
+  const internalId = getWildFilterId(pkmn.pokemon_id, pkmn.form, defaultFormId)
 
   const [markerRef, setMarkerRef] = React.useState(null)
 

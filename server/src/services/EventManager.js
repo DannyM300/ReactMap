@@ -8,6 +8,7 @@ const { Logger } = require('@rm/logger')
 const { generate, load } = require('@rm/masterfile')
 
 const { setLongInterval } = require('../utils/setLongTimeout')
+const { getWildFilterKey } = require('../filters/pokemon/getWildFilterKey')
 const { PoracleAPI } = require('./Poracle')
 const { getCache } = require('./cache')
 
@@ -502,7 +503,15 @@ class EventManager extends Logger {
     this.available[category].forEach((item) => {
       if (!Number.isNaN(parseInt(item.charAt(0)))) {
         const [id, form] = item.split('-')
-        const formId = form || '0'
+        let formId = form || '0'
+        if (category === 'pokemon' && this.masterfile.pokemon[id]) {
+          const [, canonicalFormId] = getWildFilterKey(
+            id,
+            formId,
+            this.masterfile.pokemon[id].defaultFormId,
+          ).split('-')
+          formId = canonicalFormId
+        }
         if (category === 'pokemon' && id === '132' && formId === '0') {
           // Wild Ditto uses a synthetic filter key here. Do not backfill it
           // into the masterfile as a real form entry.

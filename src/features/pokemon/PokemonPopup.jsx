@@ -347,7 +347,10 @@ const Header = ({ pokemon, metaData, iconUrl, userSettings, isTutorial }) => {
 
   const [anchorEl, setAnchorEl] = React.useState(null)
   const { id, pokemon_id, form, display_pokemon_id } = pokemon
-  const filterKey = getWildFilterId(pokemon_id, form)
+  const defaultFormId = useMemory(
+    (s) => s.masterfile.pokemon?.[pokemon_id]?.defaultFormId,
+  )
+  const filterKey = getWildFilterId(pokemon_id, form, defaultFormId)
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget)

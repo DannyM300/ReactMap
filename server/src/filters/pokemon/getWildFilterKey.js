@@ -16,10 +16,40 @@ const normalizePokemonForm = (pokemonId, formId = 0) => {
   return Number.isNaN(parsedFormId) ? 0 : parsedFormId
 }
 
-const getWildFilterKey = (pokemonId, formId = 0) =>
-  `${normalizePokemonId(pokemonId)}-${normalizePokemonForm(pokemonId, formId)}`
+const getWildFilterForm = (pokemonId, formId = 0, defaultFormId = 0) => {
+  const normalizedForm = normalizePokemonForm(pokemonId, formId)
+  const normalizedDefault = normalizePokemonForm(pokemonId, defaultFormId)
+  return normalizePokemonId(pokemonId) !== DITTO_ID &&
+    normalizedForm === 0 &&
+    normalizedDefault > 0
+    ? normalizedDefault
+    : normalizedForm
+}
+
+const getWildFilterKey = (pokemonId, formId = 0, defaultFormId = 0) =>
+  `${normalizePokemonId(pokemonId)}-${getWildFilterForm(
+    pokemonId,
+    formId,
+    defaultFormId,
+  )}`
+
+/**
+ * Golbat filters remain form-exact, so a canonical default-form selection
+ * must request both the explicit default and scanner form 0. Final matching
+ * canonicalises both rows back onto the one drawer key.
+ */
+const getWildFilterPairs = (pokemonId, formId = 0, defaultFormId = 0) => {
+  const id = normalizePokemonId(pokemonId)
+  const form = getWildFilterForm(id, formId, defaultFormId)
+  const pairs = [{ id, form }]
+  if (id !== DITTO_ID && form > 0 && form === Number(defaultFormId)) {
+    pairs.push({ id, form: 0 })
+  }
+  return pairs
+}
 
 module.exports = {
   DITTO_ID,
   getWildFilterKey,
+  getWildFilterPairs,
 }

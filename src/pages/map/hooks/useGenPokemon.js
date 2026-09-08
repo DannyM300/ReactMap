@@ -29,8 +29,18 @@ export function useGenPokemon() {
     Object.entries(pokemon).forEach(([i, pkmn]) => {
       const pokeName = t(`poke_${i}`)
       Object.entries(pkmn.forms).forEach(([j, form]) => {
+        // Cached pre-canonical availability may have injected a synthetic form
+        // 0 beside the real non-zero default. Prefer the masterfile form so the
+        // merged tile retains correct normal-form metadata.
+        if (
+          +j === 0 &&
+          pkmn.defaultFormId > 0 &&
+          pkmn.forms[pkmn.defaultFormId]
+        ) {
+          return
+        }
         const formName = t(`form_${j}`)
-        const id = getWildFilterId(i, j)
+        const id = getWildFilterId(i, j, pkmn.defaultFormId)
         if (tempObj.pokemon[id]) {
           return
         }
