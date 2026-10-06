@@ -305,16 +305,24 @@ async function shinyCheckApi(discordId, args) {
     )
 
     if (statusCode < 200 || statusCode >= 300) {
+      const errorCode = String(payload?.error?.code || '')
+      const details = payload?.error?.details ?? {}
       log.warn(
         TAGS.scanner,
         'shiny check failed for',
         discordId,
         statusCode,
-        payload?.error?.code || '',
+        errorCode,
       )
       return {
         status: 'error',
-        message: payload?.error?.message || 'shiny_check_failed',
+        message: errorCode
+          ? `shiny_check_${errorCode.replace(/^shinycheck_/, '')}`
+          : 'shiny_check_failed',
+        cooldownSeconds:
+          Number(details.retry_after_seconds) ||
+          Number(payload?.retry_after_seconds) ||
+          0,
         candidates: [],
       }
     }

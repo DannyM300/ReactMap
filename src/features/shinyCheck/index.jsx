@@ -101,6 +101,9 @@ export function ShinyCheck() {
         useShinyCheckStore.setState({
           mode: 'setArea',
           error: shinyCheck?.message || 'shiny_check_failed',
+          cooldown: shinyCheck?.cooldownSeconds
+            ? Date.now() + shinyCheck.cooldownSeconds * 1000
+            : 0,
         })
         return
       }
