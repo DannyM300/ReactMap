@@ -161,8 +161,23 @@ export function ShinyCheck() {
     [bounds, limitKm2],
   )
 
-  if (mode !== 'setArea' || !area) {
+  // 'loading' keeps the overlay mounted: unmounting it mid-request closes the
+  // popup, which looks like the button did nothing and hides any error.
+  if ((mode !== 'setArea' && mode !== 'loading') || !area) {
     return <ShinyCheckResults />
+  }
+
+  const isRunning = loading || mode === 'loading'
+  let buttonLabel = t('shiny_check_run')
+  if (isRunning) {
+    buttonLabel = t('searching')
+  } else if (remainder > 0) {
+    buttonLabel = (
+      <Trans
+        i18nKey="scanner_countdown"
+        values={{ time: Math.round(remainder / 1000) }}
+      />
+    )
   }
 
   const center = /** @type {[number, number]} */ ([
@@ -225,7 +240,7 @@ export function ShinyCheck() {
             <DividerWithMargin />
             <StyledListButton
               color="secondary"
-              disabled={loading || remainder > 0 || remoteConfig?.inProgress}
+              disabled={isRunning || remainder > 0 || remoteConfig?.inProgress}
               onClick={() => {
                 const state = useShinyCheckStore.getState()
                 useShinyCheckStore.setState({ mode: 'loading', error: '' })
@@ -243,18 +258,7 @@ export function ShinyCheck() {
               <ListItemIcon>
                 <AutoAwesome color="secondary" />
               </ListItemIcon>
-              <ListItemText
-                primary={
-                  remainder > 0 ? (
-                    <Trans
-                      i18nKey="scanner_countdown"
-                      values={{ time: Math.round(remainder / 1000) }}
-                    />
-                  ) : (
-                    t('shiny_check_run')
-                  )
-                }
-              />
+              <ListItemText primary={buttonLabel} />
             </StyledListButton>
             <StyledListButton
               color="primary"
