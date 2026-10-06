@@ -6,6 +6,8 @@ export const SHINY_CHECK_CONFIG = gql`
   query ShinyCheckConfig {
     shinyCheckConfig {
       enabled
+      ready
+      blockingReason
       areaLimitKm2
       shundoAreaLimitKm2
       maxPvpRank

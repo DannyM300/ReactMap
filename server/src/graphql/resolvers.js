@@ -168,6 +168,9 @@ const resolvers = {
       const { donationPage, misc } = config.getMapConfig(req)
 
       const scanner = config.getSafe('scanner')
+      const shinyCheckStatus = scanner.shinyCheck.enabled
+        ? await getShinyCheckStatus(req.user?.discordId)
+        : null
 
       const selectedWebhook = await validateSelectedWebhook(req.user, Db, Event)
       if (selectedWebhook) {
@@ -187,8 +190,7 @@ const resolvers = {
           scanner.scanZone.enabled && perms.scanner.includes('scanZone'),
         scanNext:
           scanner.scanNext.enabled && perms.scanner.includes('scanNext'),
-        shinyCheck:
-          scanner.shinyCheck.enabled && perms.scanner.includes('shinyCheck'),
+        shinyCheck: !!shinyCheckStatus?.allowed,
         search: Object.entries(config.getSafe('api.searchable')).some(
           ([k, v]) => v && perms[k],
         ),
@@ -446,31 +448,31 @@ const resolvers = {
       }
       return null
     },
-    shinyCheckConfig: async (_, _args, { perms, req }) => {
+    shinyCheckConfig: async (_, _args, { req }) => {
       const shinyCheck = config.getSafe('scanner.shinyCheck')
-      if (!shinyCheck.enabled || !perms.scanner?.includes('shinyCheck')) {
+      if (!shinyCheck.enabled || !req.user?.discordId) {
         return null
       }
-      const bypassCooldown = perms.scannerCooldownBypass?.includes('shinyCheck')
       const status = await getShinyCheckStatus(req.user?.discordId)
+      if (!status.allowed) return null
       return {
         enabled: true,
+        ready: status.ready,
+        blockingReason: status.blockingReason,
         areaLimitKm2: shinyCheck.areaLimitKm2,
         shundoAreaLimitKm2: shinyCheck.shundoAreaLimitKm2,
         maxPvpRank: shinyCheck.maxPvpRank,
-        cooldownSeconds: bypassCooldown ? 0 : status.cooldownSeconds,
-        cooldownSecondsRemaining: bypassCooldown
-          ? 0
-          : status.cooldownSecondsRemaining,
+        cooldownSeconds: status.cooldownSeconds,
+        cooldownSecondsRemaining: status.cooldownSecondsRemaining,
         inProgress: status.inProgress,
       }
     },
-    shinyCheck: async (_, args, { perms, req }) => {
+    shinyCheck: async (_, args, { req }) => {
       const shinyCheck = config.getSafe('scanner.shinyCheck')
-      if (!shinyCheck.enabled || !perms.scanner?.includes('shinyCheck')) {
+      if (!shinyCheck.enabled) {
         return {
           status: 'error',
-          message: 'shiny_check_not_allowed',
+          message: 'shiny_check_not_configured',
           candidates: [],
         }
       }
@@ -478,12 +480,7 @@ const resolvers = {
       // backend trusts whatever ID it is sent once the API secret matches, so
       // accepting one from the client would let anyone act as anyone.
       const result = await shinyCheckApi(req.user?.discordId, args)
-      return {
-        ...result,
-        cooldownSeconds: perms.scannerCooldownBypass?.includes('shinyCheck')
-          ? 0
-          : shinyCheck.defaultCooldownSeconds,
-      }
+      return result
     },
     search: async (_, args, { Event, perms, Db, req }) => {
       const { category, search } = args

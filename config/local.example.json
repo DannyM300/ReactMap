@@ -257,6 +257,14 @@
       }
     }
   },
+  "scanner": {
+    "shinyCheck": {
+      "enabled": false,
+      "backendUrl": "http://octillery-handler:5080",
+      "apiSecret": "same value as octilleryHandler api.api_secret",
+      "frontendId": "reactmap"
+    }
+  },
   "icons": {
     "Read_More_Here": "https://github.com/WatWowMap/ReactMap/wiki/06.-Icons-Configuration",
     "customizable": ["pokemon", "pokestop", "gym", "invasion", "reward"],

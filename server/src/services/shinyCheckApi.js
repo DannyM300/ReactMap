@@ -141,11 +141,15 @@ async function callBackend(method, path, body) {
     throw new Error('shiny_check_not_configured')
   }
 
+  const baseUrl = backendUrl.replace(/\/+$/, '')
+
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), requestTimeoutMs)
+  const timeoutMs =
+    method === 'GET' ? Math.min(requestTimeoutMs, 5000) : requestTimeoutMs
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
-    const response = await fetch(`${backendUrl}${path}`, {
+    const response = await fetch(`${baseUrl}${path}`, {
       method,
       headers: {
         accept: 'application/json',
@@ -174,7 +178,7 @@ async function callBackend(method, path, body) {
  * source of truth for it - never start the countdown from a local timer.
  *
  * @param {string} discordId
- * @returns {Promise<{ cooldownSeconds: number, cooldownSecondsRemaining: number, inProgress: boolean, allowed: boolean }>}
+ * @returns {Promise<{ cooldownSeconds: number, cooldownSecondsRemaining: number, inProgress: boolean, allowed: boolean, ready: boolean, blockingReason: string }>}
  */
 async function getStatus(discordId) {
   const { defaultCooldownSeconds } = getConfig()
@@ -183,6 +187,8 @@ async function getStatus(discordId) {
     cooldownSecondsRemaining: 0,
     inProgress: false,
     allowed: false,
+    ready: false,
+    blockingReason: '',
   }
   if (!discordId) return fallback
 
@@ -191,14 +197,24 @@ async function getStatus(discordId) {
       'GET',
       `/api/v5/shinycheck/status/${encodeURIComponent(discordId)}`,
     )
-    if (statusCode < 200 || statusCode >= 300 || !payload?.data) return fallback
+    if (statusCode < 200 || statusCode >= 300 || !payload?.data) {
+      log.warn(
+        TAGS.scanner,
+        'shiny check status rejected:',
+        statusCode,
+        payload?.error?.code || 'invalid_response',
+      )
+      return fallback
+    }
     return {
       cooldownSeconds:
         Number(payload.data.cooldown_seconds) || defaultCooldownSeconds,
       cooldownSecondsRemaining:
         Number(payload.data.cooldown_seconds_remaining) || 0,
       inProgress: !!payload.data.in_progress,
-      allowed: payload.data.allowed !== false,
+      allowed: payload.data.allowed === true,
+      ready: payload.data.ready === true,
+      blockingReason: String(payload.data.blocking_reason || ''),
     }
   } catch (e) {
     log.warn(TAGS.scanner, 'shiny check status failed:', e.message)
@@ -305,6 +321,7 @@ async function shinyCheckApi(discordId, args) {
 
     const result = payload?.data ?? {}
     const candidates = Array.isArray(result.candidates) ? result.candidates : []
+    const status = await getStatus(discordId)
 
     return {
       status: 'ok',
@@ -312,6 +329,7 @@ async function shinyCheckApi(discordId, args) {
       scanned: Number(result.scanned) || 0,
       possibleShinies: Number(result.possible_shinies) || candidates.length,
       messagesSent: Number(result.messages_sent) || 0,
+      cooldownSeconds: status.cooldownSeconds,
       candidates: candidates.map(toPokemon),
     }
   } catch (e) {

@@ -135,6 +135,9 @@ export function ShinyCheck() {
         cooldown: remoteConfig.cooldownSecondsRemaining
           ? Date.now() + remoteConfig.cooldownSecondsRemaining * 1000
           : 0,
+        error: remoteConfig.ready
+          ? ''
+          : `shiny_check_${remoteConfig.blockingReason || 'failed'}`,
       })
     }
   }, [remoteConfig])
@@ -240,7 +243,12 @@ export function ShinyCheck() {
             <DividerWithMargin />
             <StyledListButton
               color="secondary"
-              disabled={isRunning || remainder > 0 || remoteConfig?.inProgress}
+              disabled={
+                isRunning ||
+                remainder > 0 ||
+                remoteConfig?.inProgress ||
+                !remoteConfig?.ready
+              }
               onClick={() => {
                 const state = useShinyCheckStore.getState()
                 useShinyCheckStore.setState({ mode: 'loading', error: '' })
