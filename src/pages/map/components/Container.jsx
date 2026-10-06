@@ -6,6 +6,7 @@ import { useMemory } from '@store/useMemory'
 import { useStorage } from '@store/useStorage'
 import { useMapStore } from '@store/useMapStore'
 import { ScanOnDemand } from '@features/scanner'
+import { ShinyCheck } from '@features/shinyCheck'
 import { WebhookMarker, WebhookAreaSelection } from '@features/webhooks'
 import { timeCheck } from '@utils/timeCheck'
 
@@ -62,6 +63,7 @@ export function Container() {
       <DataView />
       <ScanOnDemand mode="scanNext" />
       <ScanOnDemand mode="scanZone" />
+      <ShinyCheck />
       <WebhookMarker />
       <WebhookAreaSelection />
       <Nav />

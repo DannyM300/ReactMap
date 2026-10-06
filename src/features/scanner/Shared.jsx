@@ -13,7 +13,7 @@ import ClearIcon from '@mui/icons-material/Clear'
 
 import { useScanStore, useScannerSessionStorage } from './hooks/store'
 
-const StyledListItem = styled(ListItem)(() => ({
+export const StyledListItem = styled(ListItem)(() => ({
   padding: '2px 16px',
 }))
 
@@ -21,7 +21,7 @@ export const StyledListItemText = styled(ListItemText)(() => ({
   textAlign: 'center',
 }))
 
-const StyledListButton = styled(ListItemButton)(() => ({
+export const StyledListButton = styled(ListItemButton)(() => ({
   padding: '2px 16px',
 }))
 

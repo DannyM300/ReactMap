@@ -165,6 +165,14 @@ type Query {
   webhookCategories: [String]
   webhookUser: UserPoracleConfig
   scanner(category: String, method: String, data: JSON): ScannerApi
+  shinyCheckConfig: ShinyCheckConfig
+  shinyCheck(
+    bbox: JSON
+    shundo: Boolean
+    little_max_level: Int
+    great_max_level: Int
+    ultra_max_level: Int
+  ): ShinyCheckResult
   validateUser: ValidUserObj
 }
 

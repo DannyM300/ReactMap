@@ -14,6 +14,10 @@ const { validateSelectedWebhook } = require('../utils/validateSelectedWebhook')
 const { PoracleAPI } = require('../services/Poracle')
 const { geocoder } = require('../services/geocoder')
 const { scannerApi } = require('../services/scannerApi')
+const {
+  shinyCheckApi,
+  getStatus: getShinyCheckStatus,
+} = require('../services/shinyCheckApi')
 const { getPolyVector } = require('../utils/getPolyVector')
 const { getPlacementCells } = require('../utils/getPlacementCells')
 const { getTypeCells } = require('../utils/getTypeCells')
@@ -183,6 +187,8 @@ const resolvers = {
           scanner.scanZone.enabled && perms.scanner.includes('scanZone'),
         scanNext:
           scanner.scanNext.enabled && perms.scanner.includes('scanNext'),
+        shinyCheck:
+          scanner.shinyCheck.enabled && perms.scanner.includes('shinyCheck'),
         search: Object.entries(config.getSafe('api.searchable')).some(
           ([k, v]) => v && perms[k],
         ),
@@ -439,6 +445,45 @@ const resolvers = {
         }
       }
       return null
+    },
+    shinyCheckConfig: async (_, _args, { perms, req }) => {
+      const shinyCheck = config.getSafe('scanner.shinyCheck')
+      if (!shinyCheck.enabled || !perms.scanner?.includes('shinyCheck')) {
+        return null
+      }
+      const bypassCooldown = perms.scannerCooldownBypass?.includes('shinyCheck')
+      const status = await getShinyCheckStatus(req.user?.discordId)
+      return {
+        enabled: true,
+        areaLimitKm2: shinyCheck.areaLimitKm2,
+        shundoAreaLimitKm2: shinyCheck.shundoAreaLimitKm2,
+        maxPvpRank: shinyCheck.maxPvpRank,
+        cooldownSeconds: bypassCooldown ? 0 : status.cooldownSeconds,
+        cooldownSecondsRemaining: bypassCooldown
+          ? 0
+          : status.cooldownSecondsRemaining,
+        inProgress: status.inProgress,
+      }
+    },
+    shinyCheck: async (_, args, { perms, req }) => {
+      const shinyCheck = config.getSafe('scanner.shinyCheck')
+      if (!shinyCheck.enabled || !perms.scanner?.includes('shinyCheck')) {
+        return {
+          status: 'error',
+          message: 'shiny_check_not_allowed',
+          candidates: [],
+        }
+      }
+      // The Discord ID always comes from the signed-in session: the octillery
+      // backend trusts whatever ID it is sent once the API secret matches, so
+      // accepting one from the client would let anyone act as anyone.
+      const result = await shinyCheckApi(req.user?.discordId, args)
+      return {
+        ...result,
+        cooldownSeconds: perms.scannerCooldownBypass?.includes('shinyCheck')
+          ? 0
+          : shinyCheck.defaultCooldownSeconds,
+      }
     },
     search: async (_, args, { Event, perms, Db, req }) => {
       const { category, search } = args

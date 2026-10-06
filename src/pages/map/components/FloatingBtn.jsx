@@ -16,6 +16,7 @@ import EuroSymbol from '@mui/icons-material/EuroSymbol'
 import Person from '@mui/icons-material/Person'
 import TrackChanges from '@mui/icons-material/TrackChanges'
 import BlurOn from '@mui/icons-material/BlurOn'
+import AutoAwesome from '@mui/icons-material/AutoAwesome'
 import Fab from '@mui/material/Fab'
 import { useQuery } from '@apollo/client'
 import { useTranslation } from 'react-i18next'
@@ -30,11 +31,12 @@ import { useMemory } from '@store/useMemory'
 import { useLayoutStore } from '@store/useLayoutStore'
 import { useStorage } from '@store/useStorage'
 import { useScanStore } from '@features/scanner'
+import { useShinyCheckStore } from '@features/shinyCheck/hooks/store'
 import { setModeBtn, useWebhookStore } from '@store/useWebhookStore'
 import { I } from '@components/I'
 import { Notification } from '@components/Notification'
 
-/** @typedef {keyof ReturnType<typeof useLayoutStore['getState']> | keyof ReturnType<typeof useScanStore['getState']>} Keys */
+/** @typedef {keyof ReturnType<typeof useLayoutStore['getState']> | keyof ReturnType<typeof useScanStore['getState']> | 'shinyCheckMode'} Keys */
 
 const StyledStack = styled(Stack)(({ theme }) => ({
   width: 50,
@@ -66,6 +68,7 @@ const DEFAULT = {
   profileButton: false,
   scanNext: false,
   scanZone: false,
+  shinyCheck: false,
   webhooks: false,
   search: false,
 }
@@ -77,6 +80,11 @@ const handleClick = (name) => () => {
     case 'scanNextMode':
       return useScanStore.setState((prev) => ({
         [name]: prev[name] === 'setLocation' ? '' : 'setLocation',
+      }))
+    case 'shinyCheckMode':
+      return useShinyCheckStore.setState((prev) => ({
+        mode: prev.mode === 'setArea' ? '' : 'setArea',
+        error: '',
       }))
     default:
       return useLayoutStore.setState({ [name]: true })
@@ -103,6 +111,7 @@ export function FloatingButtons() {
 
   const scanNextMode = useScanStore((s) => s.scanNextMode)
   const scanZoneMode = useScanStore((s) => s.scanZoneMode)
+  const shinyCheckMode = useShinyCheckStore((s) => s.mode)
 
   const ref = React.useRef(null)
 
@@ -118,7 +127,12 @@ export function FloatingButtons() {
 
   const fabSize = isMobile ? 'small' : 'large'
   const iconSize = isMobile ? 'small' : 'medium'
-  const disabled = !!webhookMode || !!scanNextMode || !!scanZoneMode || !online
+  const disabled =
+    !!webhookMode ||
+    !!scanNextMode ||
+    !!scanZoneMode ||
+    !!shinyCheckMode ||
+    !online
 
   const handleNavBtn = React.useCallback(
     (/** @type {'zoomIn' | 'zoomOut' | 'locate'} */ name) => () => {
@@ -198,7 +212,9 @@ export function FloatingButtons() {
             size={fabSize}
             onClick={handleClick('scanNextMode')}
             title={t('scan_next')}
-            disabled={!!webhookMode || !!scanZoneMode || !online}
+            disabled={
+              !!webhookMode || !!scanZoneMode || !!shinyCheckMode || !online
+            }
           >
             <TrackChanges fontSize={iconSize} sx={{ color: 'white' }} />
           </Fab>
@@ -209,9 +225,24 @@ export function FloatingButtons() {
             size={fabSize}
             onClick={handleClick('scanZoneMode')}
             title={t('scan_zone')}
-            disabled={!!webhookMode || !!scanNextMode || !online}
+            disabled={
+              !!webhookMode || !!scanNextMode || !!shinyCheckMode || !online
+            }
           >
             <BlurOn fontSize={iconSize} sx={{ color: 'white' }} />
+          </Fab>
+        )}
+        {fabButtons.shinyCheck && (
+          <Fab
+            color={shinyCheckMode === 'setArea' ? 'primary' : 'secondary'}
+            size={fabSize}
+            onClick={handleClick('shinyCheckMode')}
+            title={t('shiny_check')}
+            disabled={
+              !!webhookMode || !!scanNextMode || !!scanZoneMode || !online
+            }
+          >
+            <AutoAwesome fontSize={iconSize} sx={{ color: 'white' }} />
           </Fab>
         )}
         {!!DonorIcon && (

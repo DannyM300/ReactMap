@@ -195,8 +195,29 @@ type FabButtons {
   profileButton: Boolean
   scanZone: Boolean
   scanNext: Boolean
+  shinyCheck: Boolean
   webhooks: Boolean
   search: Boolean
+}
+
+type ShinyCheckConfig {
+  enabled: Boolean
+  areaLimitKm2: Float
+  shundoAreaLimitKm2: Float
+  maxPvpRank: Int
+  cooldownSeconds: Int
+  cooldownSecondsRemaining: Int
+  inProgress: Boolean
+}
+
+type ShinyCheckResult {
+  status: String
+  message: String
+  scanned: Int
+  possibleShinies: Int
+  messagesSent: Int
+  cooldownSeconds: Int
+  candidates: [Pokemon]
 }
 
 type ScannerConfig {

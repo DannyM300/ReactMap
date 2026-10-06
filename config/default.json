@@ -694,6 +694,32 @@
       "discordRoles": [],
       "local": [],
       "telegramGroups": []
+    },
+    "shinyCheck": {
+      "enabled": false,
+      "trialPeriodEligible": false,
+      "backendUrl": "http://ip:port",
+      "apiSecret": "",
+      "frontendId": "reactmap",
+      "golbat": {
+        "endpoint": "",
+        "secret": ""
+      },
+      "areaLimitKm2": 25,
+      "shundoAreaLimitKm2": 100,
+      "areaTolerance": 1.01,
+      "maxPvpRank": 10,
+      "defaultCooldownSeconds": 300,
+      "requestTimeoutMs": 135000,
+      "shinyCheckAreaRestriction": [],
+      "cooldownBypass": {
+        "discordRoles": [],
+        "local": [],
+        "telegramGroups": []
+      },
+      "discordRoles": [],
+      "local": [],
+      "telegramGroups": []
     }
   },
   "webhooks": [],

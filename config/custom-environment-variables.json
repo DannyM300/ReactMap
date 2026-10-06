@@ -1667,6 +1667,77 @@
         "__name": "SCANNER_SCAN_ZONE_TELEGRAM_GROUPS",
         "__format": "json"
       }
+    },
+    "shinyCheck": {
+      "enabled": {
+        "__name": "SCANNER_SHINY_CHECK_ENABLED",
+        "__format": "boolean"
+      },
+      "trialPeriodEligible": {
+        "__name": "SCANNER_SHINY_CHECK_TRIAL_PERIOD_ELIGIBLE",
+        "__format": "boolean"
+      },
+      "backendUrl": "SCANNER_SHINY_CHECK_BACKEND_URL",
+      "apiSecret": "SCANNER_SHINY_CHECK_API_SECRET",
+      "frontendId": "SCANNER_SHINY_CHECK_FRONTEND_ID",
+      "golbat": {
+        "endpoint": "SCANNER_SHINY_CHECK_GOLBAT_ENDPOINT",
+        "secret": "SCANNER_SHINY_CHECK_GOLBAT_SECRET"
+      },
+      "areaLimitKm2": {
+        "__name": "SCANNER_SHINY_CHECK_AREA_LIMIT_KM2",
+        "__format": "number"
+      },
+      "shundoAreaLimitKm2": {
+        "__name": "SCANNER_SHINY_CHECK_SHUNDO_AREA_LIMIT_KM2",
+        "__format": "number"
+      },
+      "areaTolerance": {
+        "__name": "SCANNER_SHINY_CHECK_AREA_TOLERANCE",
+        "__format": "number"
+      },
+      "maxPvpRank": {
+        "__name": "SCANNER_SHINY_CHECK_MAX_PVP_RANK",
+        "__format": "number"
+      },
+      "defaultCooldownSeconds": {
+        "__name": "SCANNER_SHINY_CHECK_DEFAULT_COOLDOWN_SECONDS",
+        "__format": "number"
+      },
+      "requestTimeoutMs": {
+        "__name": "SCANNER_SHINY_CHECK_REQUEST_TIMEOUT_MS",
+        "__format": "number"
+      },
+      "shinyCheckAreaRestriction": {
+        "__name": "SCANNER_SHINY_CHECK_AREA_RESTRICTION",
+        "__format": "json"
+      },
+      "cooldownBypass": {
+        "discordRoles": {
+          "__name": "SCANNER_SHINY_CHECK_COOLDOWN_BYPASS_DISCORD_ROLES",
+          "__format": "json"
+        },
+        "local": {
+          "__name": "SCANNER_SHINY_CHECK_COOLDOWN_BYPASS_LOCAL",
+          "__format": "json"
+        },
+        "telegramGroups": {
+          "__name": "SCANNER_SHINY_CHECK_COOLDOWN_BYPASS_TELEGRAM_GROUPS",
+          "__format": "json"
+        }
+      },
+      "discordRoles": {
+        "__name": "SCANNER_SHINY_CHECK_DISCORD_ROLES",
+        "__format": "json"
+      },
+      "local": {
+        "__name": "SCANNER_SHINY_CHECK_LOCAL",
+        "__format": "json"
+      },
+      "telegramGroups": {
+        "__name": "SCANNER_SHINY_CHECK_TELEGRAM_GROUPS",
+        "__format": "json"
+      }
     }
   },
   "webhooks": {
