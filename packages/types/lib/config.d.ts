@@ -152,6 +152,27 @@ export type Config<Client extends boolean = false> = DeepMerge<
           local: string[]
         }
       }
+      shinyCheck: {
+        enabled: boolean
+        backendUrl: string
+        apiSecret: string
+        frontendId: string
+        golbat: { endpoint: string; secret: string }
+        areaLimitKm2: number
+        shundoAreaLimitKm2: number
+        areaTolerance: number
+        maxPvpRank: number
+        defaultCooldownSeconds: number
+        requestTimeoutMs: number
+        discordRoles: string[]
+        telegramGroups: string[]
+        local: string[]
+        cooldownBypass: {
+          discordRoles: string[]
+          telegramGroups: string[]
+          local: string[]
+        }
+      }
     }
     icons: Icons
     manualAreas: ExampleConfig['manualAreas'][number][]

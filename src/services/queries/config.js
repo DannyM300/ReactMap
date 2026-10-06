@@ -27,6 +27,7 @@ export const FAB_BUTTONS = gql`
       profileButton
       scanNext
       scanZone
+      shinyCheck
       webhooks
       search
     }
