@@ -253,14 +253,16 @@ export function ShinyCheck() {
     [bounds, limitKm2],
   )
 
+  // Every hook has to run on every render, so these stay above the early
+  // return below - reading them after it changes the hook count and throws.
+  const personalPlayerId = useShinyCheckSettings((s) => s.playerId.trim())
+  const personalOneInN = useShinyCheckSettings((s) => s.oneInN)
+
   // 'loading' keeps the overlay mounted: unmounting it mid-request closes the
   // popup, which looks like the button did nothing and hides any error.
   if ((mode !== 'setArea' && mode !== 'loading') || !area) {
     return <ShinyCheckResults />
   }
-
-  const personalPlayerId = useShinyCheckSettings((s) => s.playerId.trim())
-  const personalOneInN = useShinyCheckSettings((s) => s.oneInN)
 
   const isRunning = loading || mode === 'loading'
   let buttonLabel = t('shiny_check_run')
