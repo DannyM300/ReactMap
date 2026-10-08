@@ -85,9 +85,14 @@ function PersonalSettings({ bounds }) {
         <ListItemText primary={t('personal_shiny_auto')} />
         <Switch
           checked={auto}
-          onChange={({ target }) =>
+          onChange={({ target }) => {
             useShinyCheckSettings.setState({ auto: target.checked })
-          }
+            // Switching it off should take the markers with it, otherwise the
+            // last batch sits there looking live with nothing refreshing it.
+            if (!target.checked) {
+              useShinyCheckStore.setState({ results: [] })
+            }
+          }}
         />
       </StyledListItem>
     </>

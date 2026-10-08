@@ -31,7 +31,10 @@ import { useMemory } from '@store/useMemory'
 import { useLayoutStore } from '@store/useLayoutStore'
 import { useStorage } from '@store/useStorage'
 import { useScanStore } from '@features/scanner'
-import { useShinyCheckStore } from '@features/shinyCheck/hooks/store'
+import {
+  useShinyCheckSettings,
+  useShinyCheckStore,
+} from '@features/shinyCheck/hooks/store'
 import { setModeBtn, useWebhookStore } from '@store/useWebhookStore'
 import { I } from '@components/I'
 import { Notification } from '@components/Notification'
@@ -112,6 +115,7 @@ export function FloatingButtons() {
   const scanNextMode = useScanStore((s) => s.scanNextMode)
   const scanZoneMode = useScanStore((s) => s.scanZoneMode)
   const shinyCheckMode = useShinyCheckStore((s) => s.mode)
+  const shinyCheckAuto = useShinyCheckSettings((s) => s.auto)
 
   const ref = React.useRef(null)
 
@@ -234,7 +238,11 @@ export function FloatingButtons() {
         )}
         {fabButtons.shinyCheck && (
           <Fab
-            color={shinyCheckMode === 'setArea' ? 'primary' : 'secondary'}
+            color={
+              shinyCheckMode === 'setArea' || shinyCheckAuto
+                ? 'primary'
+                : 'secondary'
+            }
             size={fabSize}
             onClick={handleClick('shinyCheckMode')}
             title={t('shiny_check')}
