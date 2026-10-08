@@ -51,6 +51,7 @@ function PersonalSettings({ bounds }) {
   const { t } = useTranslation()
   const playerId = useShinyCheckSettings((s) => s.playerId)
   const oneInN = useShinyCheckSettings((s) => s.oneInN)
+  const auto = useShinyCheckSettings((s) => s.auto)
 
   return (
     <>
@@ -77,6 +78,15 @@ function PersonalSettings({ bounds }) {
           inputProps={{ min: bounds.min, max: bounds.max, step: 1 }}
           onChange={({ target }) =>
             useShinyCheckSettings.setState({ oneInN: Number(target.value) })
+          }
+        />
+      </StyledListItem>
+      <StyledListItem>
+        <ListItemText primary={t('personal_shiny_auto')} />
+        <Switch
+          checked={auto}
+          onChange={({ target }) =>
+            useShinyCheckSettings.setState({ auto: target.checked })
           }
         />
       </StyledListItem>
@@ -192,8 +202,11 @@ export function ShinyCheck() {
           })
           return
         }
+        // An automatic refresh must not close the popup underneath the user,
+        // so only a run they started by hand dismisses it.
+        const manual = useShinyCheckStore.getState().mode === 'loading'
         useShinyCheckStore.setState({
-          mode: '',
+          ...(manual ? { mode: '' } : {}),
           error: '',
           results: personalShiny.candidates || [],
           scanned: personalShiny.scanned,
@@ -208,10 +221,16 @@ export function ShinyCheck() {
   React.useEffect(() => {
     if (mode === 'setArea') {
       getConfig()
-      getPersonalConfig()
       setBounds(map.getBounds())
     }
-  }, [mode, getConfig, getPersonalConfig, map])
+  }, [mode, getConfig, map])
+
+  // Auto mode runs with the popup shut, so the config and the starting bounds
+  // have to be there from the off rather than waiting for the popup to open.
+  React.useEffect(() => {
+    getPersonalConfig()
+    setBounds(map.getBounds())
+  }, [getPersonalConfig, map])
 
   // The cooldown is shared with the Discord bot, so the backend is the only
   // honest source for what is left of it.
@@ -264,6 +283,52 @@ export function ShinyCheck() {
   // Octillery's own controls (shundo, PvP ranks, its button) are meaningless
   // for the local roll, so they only render when that path actually works.
   const octilleryReady = !!remoteConfig?.ready
+
+  const autoEnabled = useShinyCheckSettings((s) => s.auto)
+  const lastAutoKey = React.useRef('')
+
+  // Re-roll the new viewport as the map settles. Debounced so a drag across
+  // the city is one request, and keyed on the box so an unchanged view and a
+  // re-render never refetch.
+  React.useEffect(() => {
+    if (
+      !autoEnabled ||
+      !personalPlayerId ||
+      !personalConfig?.enabled ||
+      !area
+    ) {
+      return undefined
+    }
+    const { min, max } = area.bbox
+    const key = [
+      min.lat.toFixed(4),
+      min.lon.toFixed(4),
+      max.lat.toFixed(4),
+      max.lon.toFixed(4),
+      personalOneInN,
+      personalPlayerId,
+    ].join(',')
+    if (key === lastAutoKey.current) return undefined
+
+    const timeout = setTimeout(() => {
+      lastAutoKey.current = key
+      runPersonal({
+        variables: {
+          playerId: personalPlayerId,
+          bbox: area.bbox,
+          oneInN: personalOneInN,
+        },
+      })
+    }, 600)
+    return () => clearTimeout(timeout)
+  }, [
+    autoEnabled,
+    personalPlayerId,
+    personalOneInN,
+    personalConfig,
+    area,
+    runPersonal,
+  ])
 
   // 'loading' keeps the overlay mounted: unmounting it mid-request closes the
   // popup, which looks like the button did nothing and hides any error.

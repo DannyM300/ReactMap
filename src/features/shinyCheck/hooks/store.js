@@ -27,10 +27,10 @@ import { createJSONStorage, persist } from 'zustand/middleware'
  * The player ID and odds are the user's own settings, so they live in their
  * browser rather than on the server - we never store someone's player ID.
  *
- * @type {import("zustand").UseBoundStore<import("zustand").StoreApi<{ playerId: string, oneInN: number }>>}
+ * @type {import("zustand").UseBoundStore<import("zustand").StoreApi<{ playerId: string, oneInN: number, auto: boolean }>>}
  */
 export const useShinyCheckSettings = create(
-  persist(() => ({ playerId: '', oneInN: 512 }), {
+  persist(() => ({ playerId: '', oneInN: 512, auto: false }), {
     name: 'shinyCheckSettings',
     storage: createJSONStorage(() => localStorage),
   }),

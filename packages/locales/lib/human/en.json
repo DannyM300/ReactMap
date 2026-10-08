@@ -959,5 +959,6 @@
   "personal_shiny_invalid_area": "Move the map to a valid area first",
   "personal_shiny_area_too_large": "That area is larger than the limit",
   "personal_shiny_no_source": "No Pokemon source is configured for this map",
-  "personal_shiny_source_failed": "Could not read spawns for that area"
+  "personal_shiny_source_failed": "Could not read spawns for that area",
+  "personal_shiny_auto": "Update as I move the map"
 }

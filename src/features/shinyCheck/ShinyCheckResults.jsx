@@ -3,10 +3,12 @@ import * as React from 'react'
 import { Marker, Popup } from 'react-leaflet'
 
 import { useMemory } from '@store/useMemory'
-import { basicPokemonMarker } from '@features/pokemon/pokemonMarker'
+import { fancyPokemonMarker } from '@features/pokemon/pokemonMarker'
 import { PokemonPopup } from '@features/pokemon/PokemonPopup'
 
 import { useShinyCheckStore } from './hooks/store'
+
+const SHINY_GLOW = '#FFD700'
 
 /**
  * One shiny candidate, drawn with the map's own Pokemon marker and popup. The
@@ -35,7 +37,18 @@ function ShinyCandidate({ pokemon }) {
   return (
     <Marker
       position={[pokemon.lat, pokemon.lon]}
-      icon={basicPokemonMarker({ iconUrl, iconSize: size })}
+      icon={fancyPokemonMarker({
+        pkmn: pokemon,
+        iconUrl,
+        iconSize: size,
+        // The map already glows hundos red; gold reads as shiny and does not
+        // collide with any rule the Pokemon layer uses.
+        showGlow: SHINY_GLOW,
+        showWeather: false,
+        badge: '',
+        opacity: 1,
+        timeOfDay: 'day',
+      })}
     >
       <Popup position={[pokemon.lat, pokemon.lon]}>
         <PokemonPopup pokemon={pokemon} iconUrl={iconUrl} />
