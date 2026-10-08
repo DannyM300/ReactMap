@@ -34,6 +34,7 @@ function ShinyCandidate({ pokemon }) {
     true,
   )
   const size = Icons.getSize('pokemon', 'md')
+  const expireTimestamp = Number(pokemon.expire_timestamp) || 0
 
   return (
     <Marker
@@ -54,8 +55,16 @@ function ShinyCandidate({ pokemon }) {
       <Popup position={[pokemon.lat, pokemon.lon]}>
         <PokemonPopup pokemon={pokemon} iconUrl={iconUrl} />
       </Popup>
-      {pokemon.expire_timestamp > 0 && (
-        <TooltipWrapper timers={[pokemon.expire_timestamp]} offset={[0, 14]} />
+      {expireTimestamp > 0 && (
+        <TooltipWrapper
+          timers={[expireTimestamp]}
+          // fancyPokemonMarker builds its divIcon without an iconSize, so
+          // Leaflet anchors the tooltip against the 12px default rather than
+          // the sprite. The Pokemon layer gets away with [0, 14] because it
+          // mostly uses the sized basic marker; these are always fancy, so the
+          // offset has to clear the sprite itself.
+          offset={[0, Math.round(size * 0.6)]}
+        />
       )}
     </Marker>
   )
