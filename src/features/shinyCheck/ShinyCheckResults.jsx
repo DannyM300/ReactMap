@@ -5,6 +5,7 @@ import { Marker, Popup } from 'react-leaflet'
 import { useMemory } from '@store/useMemory'
 import { fancyPokemonMarker } from '@features/pokemon/pokemonMarker'
 import { PokemonPopup } from '@features/pokemon/PokemonPopup'
+import { TooltipWrapper } from '@components/ToolTipWrapper'
 
 import { useShinyCheckStore } from './hooks/store'
 
@@ -53,6 +54,9 @@ function ShinyCandidate({ pokemon }) {
       <Popup position={[pokemon.lat, pokemon.lon]}>
         <PokemonPopup pokemon={pokemon} iconUrl={iconUrl} />
       </Popup>
+      {pokemon.expire_timestamp > 0 && (
+        <TooltipWrapper timers={[pokemon.expire_timestamp]} offset={[0, 14]} />
+      )}
     </Marker>
   )
 }
