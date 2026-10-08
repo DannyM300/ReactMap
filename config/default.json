@@ -719,7 +719,15 @@
       },
       "discordRoles": [],
       "local": [],
-      "telegramGroups": []
+      "telegramGroups": [],
+      "personal": {
+        "enabled": true,
+        "defaultOneInN": 512,
+        "minOneInN": 1,
+        "maxOneInN": 100000,
+        "areaLimitKm2": 100,
+        "maxSpawns": 5000
+      }
     }
   },
   "webhooks": [],

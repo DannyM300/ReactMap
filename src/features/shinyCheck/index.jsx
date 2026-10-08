@@ -7,6 +7,7 @@ import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
+import TextField from '@mui/material/TextField'
 import Switch from '@mui/material/Switch'
 import AutoAwesome from '@mui/icons-material/AutoAwesome'
 import ClearIcon from '@mui/icons-material/Clear'
@@ -14,14 +15,19 @@ import { Trans, useTranslation } from 'react-i18next'
 
 import { fallbackMarker } from '@assets/fallbackMarker'
 import { DividerWithMargin } from '@components/StyledDivider'
-import { SHINY_CHECK, SHINY_CHECK_CONFIG } from '@services/queries/shinyCheck'
+import {
+  PERSONAL_SHINY,
+  PERSONAL_SHINY_CONFIG,
+  SHINY_CHECK,
+  SHINY_CHECK_CONFIG,
+} from '@services/queries/shinyCheck'
 import {
   StyledListItem,
   StyledListButton,
   StyledListItemText,
 } from '@features/scanner/Shared'
 
-import { useShinyCheckStore } from './hooks/store'
+import { useShinyCheckSettings, useShinyCheckStore } from './hooks/store'
 import { getCheckArea } from './utils'
 import { ShinyCheckResults } from './ShinyCheckResults'
 
@@ -32,6 +38,51 @@ const LEAGUES = /** @type {const} */ ([
 ])
 
 const RECTANGLE_STYLE = { color: '#FFD700', weight: 2 }
+
+/**
+ * The personal roll is computed locally from the encounter ID and the player's
+ * own ID, so it needs no backend access and has no cooldown. The ID is the
+ * account's raw player ID - not the friend code - and is kept in this browser.
+ *
+ * @param {{ min: number, max: number }} bounds
+ * @returns {React.JSX.Element}
+ */
+function PersonalSettings({ bounds }) {
+  const { t } = useTranslation()
+  const playerId = useShinyCheckSettings((s) => s.playerId)
+  const oneInN = useShinyCheckSettings((s) => s.oneInN)
+
+  return (
+    <>
+      <StyledListItem>
+        <TextField
+          fullWidth
+          size="small"
+          variant="standard"
+          label={t('personal_shiny_player_id')}
+          value={playerId}
+          onChange={({ target }) =>
+            useShinyCheckSettings.setState({ playerId: target.value })
+          }
+        />
+      </StyledListItem>
+      <StyledListItem>
+        <TextField
+          fullWidth
+          size="small"
+          type="number"
+          variant="standard"
+          label={t('personal_shiny_odds')}
+          value={oneInN}
+          inputProps={{ min: bounds.min, max: bounds.max, step: 1 }}
+          onChange={({ target }) =>
+            useShinyCheckSettings.setState({ oneInN: Number(target.value) })
+          }
+        />
+      </StyledListItem>
+    </>
+  )
+}
 
 /**
  * @param {{ maxPvpRank: number }} props
@@ -123,12 +174,44 @@ export function ShinyCheck() {
       useShinyCheckStore.setState({ mode: 'setArea', error: e.message }),
   })
 
+  const [getPersonalConfig, { data: personalConfigData }] = useLazyQuery(
+    PERSONAL_SHINY_CONFIG,
+    { fetchPolicy: 'cache-first' },
+  )
+  const personalConfig = personalConfigData?.personalShinyConfig
+
+  const [runPersonal, { loading: personalLoading }] = useLazyQuery(
+    PERSONAL_SHINY,
+    {
+      fetchPolicy: 'network-only',
+      onCompleted: ({ personalShiny }) => {
+        if (!personalShiny || personalShiny.status !== 'ok') {
+          useShinyCheckStore.setState({
+            mode: 'setArea',
+            error: personalShiny?.message || 'personal_shiny_failed',
+          })
+          return
+        }
+        useShinyCheckStore.setState({
+          mode: '',
+          error: '',
+          results: personalShiny.candidates || [],
+          scanned: personalShiny.scanned,
+          possibleShinies: personalShiny.possibleShinies,
+        })
+      },
+      onError: (e) =>
+        useShinyCheckStore.setState({ mode: 'setArea', error: e.message }),
+    },
+  )
+
   React.useEffect(() => {
     if (mode === 'setArea') {
       getConfig()
+      getPersonalConfig()
       setBounds(map.getBounds())
     }
-  }, [mode, getConfig, map])
+  }, [mode, getConfig, getPersonalConfig, map])
 
   // The cooldown is shared with the Discord bot, so the backend is the only
   // honest source for what is left of it.
@@ -172,6 +255,9 @@ export function ShinyCheck() {
   if ((mode !== 'setArea' && mode !== 'loading') || !area) {
     return <ShinyCheckResults />
   }
+
+  const personalPlayerId = useShinyCheckSettings((s) => s.playerId.trim())
+  const personalOneInN = useShinyCheckSettings((s) => s.oneInN)
 
   const isRunning = loading || mode === 'loading'
   let buttonLabel = t('shiny_check_run')
@@ -244,6 +330,43 @@ export function ShinyCheck() {
               <StyledListItemText secondary={t(error)} role="alert" />
             )}
             <DividerWithMargin />
+            {!!personalConfig?.enabled && (
+              <>
+                <PersonalSettings
+                  bounds={{
+                    min: personalConfig.minOneInN,
+                    max: personalConfig.maxOneInN,
+                  }}
+                />
+                <StyledListButton
+                  color="secondary"
+                  disabled={isRunning || personalLoading || !personalPlayerId}
+                  onClick={() => {
+                    useShinyCheckStore.setState({
+                      mode: 'loading',
+                      error: '',
+                    })
+                    runPersonal({
+                      variables: {
+                        playerId: personalPlayerId,
+                        bbox: area.bbox,
+                        oneInN: personalOneInN,
+                      },
+                    })
+                  }}
+                >
+                  <ListItemIcon>
+                    <AutoAwesome color="secondary" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={t('personal_shiny_run')}
+                    secondary={t('personal_shiny_prediction_note')}
+                    secondaryTypographyProps={{ component: 'span' }}
+                  />
+                </StyledListButton>
+                <DividerWithMargin />
+              </>
+            )}
             <StyledListButton
               color="secondary"
               disabled={

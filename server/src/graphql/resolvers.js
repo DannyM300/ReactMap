@@ -18,6 +18,7 @@ const {
   shinyCheckApi,
   getStatus: getShinyCheckStatus,
 } = require('../services/shinyCheckApi')
+const { personalShinyApi } = require('../services/personalShinyApi')
 const { getPolyVector } = require('../utils/getPolyVector')
 const { getPlacementCells } = require('../utils/getPlacementCells')
 const { getTypeCells } = require('../utils/getTypeCells')
@@ -447,6 +448,30 @@ const resolvers = {
         }
       }
       return null
+    },
+    personalShinyConfig: (_, _args, { perms }) => {
+      const personal = config.getSafe('scanner.shinyCheck.personal')
+      if (!personal.enabled || !perms?.pokemon) return null
+      return {
+        enabled: true,
+        defaultOneInN: personal.defaultOneInN,
+        minOneInN: personal.minOneInN,
+        maxOneInN: personal.maxOneInN,
+        areaLimitKm2: personal.areaLimitKm2,
+      }
+    },
+    personalShiny: async (_, args, { perms }) => {
+      const personal = config.getSafe('scanner.shinyCheck.personal')
+      if (!personal.enabled || !perms?.pokemon) {
+        return {
+          status: 'error',
+          message: 'personal_shiny_not_allowed',
+          candidates: [],
+        }
+      }
+      // The player ID is the user's own and comes straight from their input;
+      // it is used for this roll only and never stored.
+      return personalShinyApi(args.playerId, args.bbox, args.oneInN)
     },
     shinyCheckConfig: async (_, _args, { req }) => {
       const shinyCheck = config.getSafe('scanner.shinyCheck')

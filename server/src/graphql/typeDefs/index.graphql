@@ -166,6 +166,8 @@ type Query {
   webhookUser: UserPoracleConfig
   scanner(category: String, method: String, data: JSON): ScannerApi
   shinyCheckConfig: ShinyCheckConfig
+  personalShinyConfig: PersonalShinyConfig
+  personalShiny(playerId: String, bbox: JSON, oneInN: Int): PersonalShinyResult
   shinyCheck(
     bbox: JSON
     shundo: Boolean

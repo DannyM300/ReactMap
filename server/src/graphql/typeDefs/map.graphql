@@ -222,6 +222,23 @@ type ShinyCheckResult {
   candidates: [Pokemon]
 }
 
+type PersonalShinyConfig {
+  enabled: Boolean
+  defaultOneInN: Int
+  minOneInN: Int
+  maxOneInN: Int
+  areaLimitKm2: Float
+}
+
+type PersonalShinyResult {
+  status: String
+  message: String
+  scanned: Int
+  rolled: Int
+  possibleShinies: Int
+  candidates: [Pokemon]
+}
+
 type ScannerConfig {
   scannerType: String
   showScanCount: Boolean

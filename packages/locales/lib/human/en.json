@@ -946,5 +946,18 @@
   "expert_group_2": "Group 2",
   "expert_group_2_description": "High level with perfect attack.",
   "expert_combine_description": "Combine them with a , or |:",
-  "expert_result_description": "This filter will show a Pokémon if it matches the criteria for Group 1 OR if it matches all the criteria for Group 2."
+  "expert_result_description": "This filter will show a Pokémon if it matches the criteria for Group 1 OR if it matches all the criteria for Group 2.",
+  "personal_shiny_player_id": "Your player ID (not friend code)",
+  "personal_shiny_odds": "Shiny odds (1 in N)",
+  "personal_shiny_run": "Check My Shinies",
+  "personal_shiny_prediction_note": "Predicted locally, not confirmed by the game",
+  "personal_shiny_failed": "Could not work out your shinies",
+  "personal_shiny_not_allowed": "You do not have access to this",
+  "personal_shiny_disabled": "Personal Shiny is turned off on this map",
+  "personal_shiny_no_player_id": "Paste your player ID first",
+  "personal_shiny_bad_odds": "Those odds are out of range",
+  "personal_shiny_invalid_area": "Move the map to a valid area first",
+  "personal_shiny_area_too_large": "That area is larger than the limit",
+  "personal_shiny_no_source": "No Pokemon source is configured for this map",
+  "personal_shiny_source_failed": "Could not read spawns for that area"
 }
