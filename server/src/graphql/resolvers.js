@@ -191,7 +191,13 @@ const resolvers = {
           scanner.scanZone.enabled && perms.scanner.includes('scanZone'),
         scanNext:
           scanner.scanNext.enabled && perms.scanner.includes('scanNext'),
-        shinyCheck: !!shinyCheckStatus?.allowed,
+        // The local personal roll needs no Octillery access, so the button has
+        // to show when either path is usable - gating it purely on Octillery
+        // hid it whenever the backend was unreachable or unconfigured.
+        shinyCheck:
+          !!shinyCheckStatus?.allowed ||
+          (config.getSafe('scanner.shinyCheck.personal').enabled &&
+            !!perms?.pokemon),
         search: Object.entries(config.getSafe('api.searchable')).some(
           ([k, v]) => v && perms[k],
         ),

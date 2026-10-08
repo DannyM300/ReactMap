@@ -241,9 +241,12 @@ export function ShinyCheck() {
     return undefined
   }, [remainder, cooldown])
 
+  // With Octillery unconfigured there is no remote config to read limits from,
+  // so fall back to the local roll's own area limit rather than Octillery's.
+  const fallbackLimitKm2 = personalConfig?.areaLimitKm2 || 25
   const limitKm2 = shundo
-    ? remoteConfig?.shundoAreaLimitKm2 || 100
-    : remoteConfig?.areaLimitKm2 || 25
+    ? remoteConfig?.shundoAreaLimitKm2 || fallbackLimitKm2
+    : remoteConfig?.areaLimitKm2 || fallbackLimitKm2
 
   const area = React.useMemo(
     () => (bounds ? getCheckArea(bounds, limitKm2) : null),
