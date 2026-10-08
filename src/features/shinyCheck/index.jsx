@@ -221,12 +221,15 @@ export function ShinyCheck() {
         cooldown: remoteConfig.cooldownSecondsRemaining
           ? Date.now() + remoteConfig.cooldownSecondsRemaining * 1000
           : 0,
-        error: remoteConfig.ready
-          ? ''
-          : `shiny_check_${remoteConfig.blockingReason || 'failed'}`,
+        // Octillery being unavailable is only an error when it is the only
+        // way to run a check - the local roll does not need it.
+        error:
+          remoteConfig.ready || personalConfig?.enabled
+            ? ''
+            : `shiny_check_${remoteConfig.blockingReason || 'failed'}`,
       })
     }
-  }, [remoteConfig])
+  }, [remoteConfig, personalConfig])
 
   const [remainder, setRemainder] = React.useState(0)
   React.useEffect(() => {
@@ -257,6 +260,10 @@ export function ShinyCheck() {
   // return below - reading them after it changes the hook count and throws.
   const personalPlayerId = useShinyCheckSettings((s) => s.playerId.trim())
   const personalOneInN = useShinyCheckSettings((s) => s.oneInN)
+
+  // Octillery's own controls (shundo, PvP ranks, its button) are meaningless
+  // for the local roll, so they only render when that path actually works.
+  const octilleryReady = !!remoteConfig?.ready
 
   // 'loading' keeps the overlay mounted: unmounting it mid-request closes the
   // popup, which looks like the button did nothing and hides any error.
@@ -321,16 +328,20 @@ export function ShinyCheck() {
                 secondaryTypographyProps={{ component: 'span' }}
               />
             </StyledListItem>
-            <StyledListItem>
-              <ListItemText primary={t('shiny_check_shundo')} />
-              <Switch
-                checked={shundo}
-                onChange={({ target }) =>
-                  useShinyCheckStore.setState({ shundo: target.checked })
-                }
-              />
-            </StyledListItem>
-            <PvpFilters maxPvpRank={remoteConfig?.maxPvpRank || 10} />
+            {octilleryReady && (
+              <>
+                <StyledListItem>
+                  <ListItemText primary={t('shiny_check_shundo')} />
+                  <Switch
+                    checked={shundo}
+                    onChange={({ target }) =>
+                      useShinyCheckStore.setState({ shundo: target.checked })
+                    }
+                  />
+                </StyledListItem>
+                <PvpFilters maxPvpRank={remoteConfig?.maxPvpRank || 10} />
+              </>
+            )}
             {!!error && (
               <StyledListItemText secondary={t(error)} role="alert" />
             )}
@@ -372,33 +383,32 @@ export function ShinyCheck() {
                 <DividerWithMargin />
               </>
             )}
-            <StyledListButton
-              color="secondary"
-              disabled={
-                isRunning ||
-                remainder > 0 ||
-                remoteConfig?.inProgress ||
-                !remoteConfig?.ready
-              }
-              onClick={() => {
-                const state = useShinyCheckStore.getState()
-                useShinyCheckStore.setState({ mode: 'loading', error: '' })
-                runCheck({
-                  variables: {
-                    bbox: area.bbox,
-                    shundo: state.shundo,
-                    little_max_level: state.little_max_level,
-                    great_max_level: state.great_max_level,
-                    ultra_max_level: state.ultra_max_level,
-                  },
-                })
-              }}
-            >
-              <ListItemIcon>
-                <AutoAwesome color="secondary" />
-              </ListItemIcon>
-              <ListItemText primary={buttonLabel} />
-            </StyledListButton>
+            {octilleryReady && (
+              <StyledListButton
+                color="secondary"
+                disabled={
+                  isRunning || remainder > 0 || remoteConfig?.inProgress
+                }
+                onClick={() => {
+                  const state = useShinyCheckStore.getState()
+                  useShinyCheckStore.setState({ mode: 'loading', error: '' })
+                  runCheck({
+                    variables: {
+                      bbox: area.bbox,
+                      shundo: state.shundo,
+                      little_max_level: state.little_max_level,
+                      great_max_level: state.great_max_level,
+                      ultra_max_level: state.ultra_max_level,
+                    },
+                  })
+                }}
+              >
+                <ListItemIcon>
+                  <AutoAwesome color="secondary" />
+                </ListItemIcon>
+                <ListItemText primary={buttonLabel} />
+              </StyledListButton>
+            )}
             <StyledListButton
               color="primary"
               onClick={() =>
