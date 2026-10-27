@@ -68,3 +68,38 @@ test('Golbat availability keeps identical titles with different targets separate
   assert.equal(result.available.includes('kspin_pokestops-3'), true)
   assert.equal(result.available.includes('kspin_pokestops-5'), true)
 })
+
+test('an undisclosed encounter reward still advertises the Substitute tile', () => {
+  // Real shape from the live scanner: the halloween_26_raid "win 1 raid" quest
+  // ships as reward_type 7 with pokemon_id 0 and no form - the species is absent
+  // from the quest JSON entirely (SQL and the Golbat endpoint agree). Reward
+  // type 7 has a dedicated filter so it is excluded from the generic `u<type>`
+  // fallback; if the mapper drops the key, those stops become both unfilterable
+  // and invisible.
+  const result = mapAvailablePokestops(
+    {
+      ...emptyAvailable([]),
+      quests: [
+        {
+          with_ar: true,
+          reward_type: 7,
+          item_id: 0,
+          amount: 1,
+          pokemon_id: 0,
+          form_id: null,
+          title: 'quest_win_raid_singular',
+          target: 1,
+        },
+      ],
+    },
+    ctx,
+  )
+  assert.equal(result.available.includes('0'), true)
+  assert.equal(result.available.includes(''), false)
+  assert.equal(result.available.includes('kquest_win_raid_singular-1'), true)
+  assert.deepEqual(result.taskConditions['kquest_win_raid_singular-1'], {
+    title: 'quest_win_raid_singular',
+    target: 1,
+    rewards: { 0: true },
+  })
+})

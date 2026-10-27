@@ -295,6 +295,14 @@ function buildPokestopDnfFilters(
             ? Number(formPart)
             : 0
         encounterPokemon.push({ pokemon_id: id, form })
+        // §mystery: species 0 is the game's undisclosed encounter reward (see
+        // getCanonicalQuestPokemonKey). Golbat reads `pokemon_id: 0` in a DNF
+        // clause as UNSET, i.e. a wildcard - measured on live data, this clause
+        // returns every type-7 stop in the bbox (5794) rather than only the
+        // undisclosed ones (337). That is a deliberate superset: secondaryFilter
+        // keys the same stops as `0` and narrows back to the exact set, and the
+        // display cap is applied after it, so the extra rows cost bandwidth on
+        // this one tile but never leak a marker the filter did not ask for.
         // The availability builders and the secondaryFilter fold an unset
         // (form 0) reward onto the species DEFAULT form, so a default-form key
         // must ALSO fetch the unset stops or they would be hidden. Additive

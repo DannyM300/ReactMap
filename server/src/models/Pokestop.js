@@ -1527,6 +1527,10 @@ class Pokestop extends Model {
 
     const taskConditions = {}
     const process = (key, title, target) => {
+      // An incomplete reward yields no key (see getCanonicalQuestPokemonKey) -
+      // advertise nothing rather than an empty-string filter no marker can
+      // satisfy. Mirrors the endpoint mapper's `if (!key) return`.
+      if (!key) return
       if (title) {
         if (key in conditions) {
           conditions[key][`${title}-${target}`] = { title, target }

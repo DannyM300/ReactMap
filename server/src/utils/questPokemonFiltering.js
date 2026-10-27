@@ -18,14 +18,31 @@
  * behaviour), so nothing is mis-merged. Mirrors the Team Rocket reward
  * reconciliation in `getCanonicalRocketPokemonFilterKey`.
  *
+ * Species `0` is NOT invalid: the game reports a deliberately undisclosed
+ * encounter reward as `pokemon_id: 0` (e.g. the `halloween_26_raid` template,
+ * whose reward JSON is `{"pokemon_id":0,"shiny_probability":0.0078125}` and
+ * carries no species name anywhere). It keeps the bare `0` key so it still
+ * gets an availability tile - `poke_0` translates to "Substitute", which is
+ * how a mystery reward is meant to render. Folding it to `''` instead would
+ * drop the tile and hide every such quest, since reward type 7 is excluded
+ * from the generic `u<type>` fallback. A form is meaningless for an unknown
+ * species, so the form is ignored for id `0` to guarantee exactly one tile.
+ *
  * @param {number|string|null|undefined} pokemonId
  * @param {number|string|null|undefined} form scanner form; unset = absent/`null`/`0`
  * @param {number|string|null|undefined} defaultForm masterfile `defaultFormId`
- * @returns {string} `''` when the id is invalid
+ * @returns {string} `''` only when the id is absent or not a number
  */
 const getCanonicalQuestPokemonKey = (pokemonId, form, defaultForm) => {
+  // `Number(null)`/`Number('')` are both 0, which species 0 now treats as a
+  // real (undisclosed) reward - so reject the absent cases before coercing,
+  // or a reward with no species at all would claim the Substitute tile.
+  if (pokemonId === null || pokemonId === undefined || pokemonId === '')
+    return ''
   const id = Number(pokemonId)
-  if (!Number.isFinite(id) || id <= 0) return ''
+  if (!Number.isFinite(id) || id < 0) return ''
+  // Undisclosed reward: one "Substitute" tile, regardless of any form.
+  if (id === 0) return '0'
 
   const numericForm = Number(form)
   const hasExplicitForm =

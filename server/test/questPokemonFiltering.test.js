@@ -71,8 +71,26 @@ test('no known default -> bare species key (prior behaviour, no mis-merge)', () 
   assert.equal(getCanonicalQuestPokemonKey(39, null, 0), '39')
 })
 
-test('invalid id yields no key', () => {
-  assert.equal(getCanonicalQuestPokemonKey(0, 5, 5), '')
+test('absent or non-numeric id yields no key', () => {
   assert.equal(getCanonicalQuestPokemonKey(null, 5, 5), '')
+  assert.equal(getCanonicalQuestPokemonKey(undefined, 5, 5), '')
+  // '' coerces to 0 via Number(), so it must be rejected before coercion or it
+  // would claim the species-0 "Substitute" tile below.
+  assert.equal(getCanonicalQuestPokemonKey('', 5, 5), '')
   assert.equal(getCanonicalQuestPokemonKey('nope', 5, 5), '')
+  assert.equal(getCanonicalQuestPokemonKey(-1, 5, 5), '')
+})
+
+test('species 0 (undisclosed reward) keeps one bare Substitute tile', () => {
+  // The game ships a deliberately hidden encounter reward as pokemon_id 0 (e.g.
+  // the halloween_26_raid template). It must still get a tile - reward type 7 is
+  // excluded from the generic `u<type>` fallback, so an empty key would make
+  // every such quest unfilterable and invisible. `poke_0` renders "Substitute".
+  assert.equal(getCanonicalQuestPokemonKey(0, null, undefined), '0')
+  assert.equal(getCanonicalQuestPokemonKey('0', null, undefined), '0')
+  // A form is meaningless for an unknown species: every shape collapses to the
+  // same single tile rather than splitting into 0 / 0-5 / 0-<default>.
+  assert.equal(getCanonicalQuestPokemonKey(0, 0, 0), '0')
+  assert.equal(getCanonicalQuestPokemonKey(0, 5, 5), '0')
+  assert.equal(getCanonicalQuestPokemonKey(0, null, 987), '0')
 })
