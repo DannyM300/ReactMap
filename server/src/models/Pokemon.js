@@ -14,6 +14,7 @@ const config = require('@rm/config')
 const { getAreaSql } = require('../utils/getAreaSql')
 const { filterRTree } = require('../utils/filterRTree')
 const { fetchJson } = require('../utils/fetchJson')
+const { encodeEncounterId } = require('../services/encounterToken')
 const {
   applyManualIdFilter,
   normalizeManualId,
@@ -110,7 +111,6 @@ class Pokemon extends Model {
       .some((league) => globalFilter.filterKeys.has(league.name))
     const ts = Math.floor(Date.now() / 1000)
     const queryLimits = config.getSafe('api.queryLimits')
-    const reactMapHandlesPvp = config.getSafe('api.pvp.reactMapHandlesPvp')
 
     // quick check to make sure no Pokemon are returned when none are enabled for users with only Pokemon perms
     if (!ivs && !pvp) {
@@ -293,7 +293,7 @@ class Pokemon extends Model {
         : new Set()
       if (!loadedIds.has(`${manualId}`)) {
         const manualResult = await this.evalQuery(
-          `${mem}/api/pokemon/id/${manualId}`,
+          `${mem}/api/pokemon/id/${encodeURIComponent(manualId)}`,
           null,
           'GET',
           secret,
@@ -349,11 +349,7 @@ class Pokemon extends Model {
         },
       })
       pvpQuery.whereNotIn('id', listOfIds)
-      if (reactMapHandlesPvp) {
-        pvpQuery.whereNotNull('cp')
-      } else {
-        pvpQuery.whereNotNull('pvp')
-      }
+      pvpQuery.whereNotNull('pvp')
       if (!getAreaSql(pvpQuery, areaRestrictions, onlyAreas)) {
         return []
       }
@@ -700,7 +696,7 @@ class Pokemon extends Model {
       const loaded = new Set(results.map((pkmn) => `${pkmn.id}`))
       if (!loaded.has(`${manualId}`)) {
         const manualResult = await this.evalQuery(
-          `${mem}/api/pokemon/id/${manualId}`,
+          `${mem}/api/pokemon/id/${encodeURIComponent(manualId)}`,
           null,
           'GET',
           secret,
@@ -821,18 +817,24 @@ class Pokemon extends Model {
   /**
    * @param {string} id
    * @param {import("@rm/types").DbContext} ctx
-   * @returns {Promise<import("@rm/types").Pokemon>}
    */
-  static getOne(id, { mem, secret, httpAuth }) {
-    return this.evalQuery(
-      mem ? `${mem}/api/pokemon/id/${id}` : null,
-      mem
-        ? undefined
-        : this.query().select(['lat', 'lon']).where('id', id).first(),
-      'GET',
-      secret,
-      httpAuth,
-    )
+  static async getOne(id, { mem, secret, httpAuth }) {
+    if (mem) {
+      const one = await this.evalQuery(
+        `${mem}/api/pokemon/id/${encodeURIComponent(id)}`,
+        undefined,
+        'GET',
+        secret,
+        httpAuth,
+      )
+      // Match the SQL projection ({lat, lon} only). Returning the raw Golbat
+      // record would leak IV/CP/level past the iv perm and area restrictions
+      // — a deep link only needs centering.
+      return one && typeof one === 'object' && 'lat' in one && 'lon' in one
+        ? { lat: one.lat, lon: one.lon }
+        : null
+    }
+    return this.query().select(['lat', 'lon']).where('id', id).first()
   }
 
   /**
@@ -907,6 +909,7 @@ class Pokemon extends Model {
       )
       .map((poke) => ({
         ...poke,
+        id: encodeEncounterId(poke.id),
         iv: perms.iv && poke.iv ? +poke.iv.toFixed(2) : null,
         distance:
           poke.distance ||

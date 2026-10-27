@@ -27,7 +27,7 @@ import { QuestConditionSelector } from './QuestConditions'
 import { TaskRewardSelector } from './TaskConditions'
 
 export function AdvancedFilter() {
-  const { category, id, selectedIds, open } = useLayoutStore(
+  const { category, id, selectedIds, open, showDefaultForms } = useLayoutStore(
     (s) => s.advancedFilter,
   )
   const { t } = useTranslation()
@@ -134,7 +134,7 @@ export function AdvancedFilter() {
             : t('set_size')
         } - ${tId(id, {
           omitFormSuffix: true,
-          showDefaultForms: id.startsWith('a'),
+          showDefaultForms: id.startsWith('a') || showDefaultForms,
         })}`}
         action={() => toggleClose()}
       />

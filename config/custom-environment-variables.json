@@ -48,6 +48,10 @@
       "__name": "API_SHOW_STRATEGIES_IN_CONFIG_API",
       "__format": "boolean"
     },
+    "hideEncounterIds": {
+      "__name": "API_HIDE_ENCOUNTER_IDS",
+      "__format": "boolean"
+    },
     "maxSessions": {
       "__name": "API_MAX_SESSIONS",
       "__format": "number"
@@ -316,10 +320,6 @@
       "levels": {
         "__name": "API_PVP_LEVELS",
         "__format": "json"
-      },
-      "reactMapHandlesPvp": {
-        "__name": "API_PVP_REACT_MAP_HANDLES_PVP",
-        "__format": "boolean"
       }
     },
     "portalUpdateLimit": {

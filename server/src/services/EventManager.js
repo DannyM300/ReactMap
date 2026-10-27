@@ -10,6 +10,7 @@ const { generate, load } = require('@rm/masterfile')
 const { setLongInterval } = require('../utils/setLongTimeout')
 const { getWildFilterKey } = require('../filters/pokemon/getWildFilterKey')
 const { PoracleAPI } = require('./Poracle')
+const { refreshPokemonData } = require('./PokemonData')
 const { getCache } = require('./cache')
 
 /**
@@ -155,18 +156,15 @@ class EventManager extends Logger {
    */
   async #refreshAvailable(category, model, Db, generation) {
     const result = await Db.getAvailable(model)
-    // null = total source failure (getAvailable): keep the last-good drawer +
-    // conditions and retry on the next call. A successful snapshot — even an
-    // empty one, when a category's last active option disappears — falls
-    // through and commits, so the drawer clears instead of showing stale
-    // filters forever.
-    if (result == null) return
     // A newer refresh (typically a forced reload) started while this one was
     // awaiting Golbat/SQL; it owns the current Db, so drop this superseded
     // result rather than committing/TTL-stamping data from an old generation.
     // This must precede applyAvailableMetadata below so the drawer AND the
     // manager metadata (questConditions/rarity) commit as one gated snapshot.
     if (this.availableGeneration[category] !== generation) return
+    // null = total source failure (getAvailable): retain the last-good drawer
+    // and conditions, and retry on the next call.
+    if (result == null) return
     const { available } = result
 
     /** @param {string} key */
@@ -263,9 +261,8 @@ class EventManager extends Logger {
   /**
    *
    * @param {import('./DbManager').DbManager} Db
-   * @param {import('./PvpWrapper').PvpWrapper | null} Pvp
    */
-  startIntervals(Db, Pvp) {
+  startIntervals(Db) {
     this.clearIntervals()
     this.log.info('starting intervals')
 
@@ -368,20 +365,22 @@ class EventManager extends Logger {
             })
           }
         },
-        1000 * 60 * 60 * (config.getSafe('map.misc.masterfileCacheHrs') || 6),
+        1000 * 60 * 60 * (config.getSafe('map.misc.masterfileCacheHrs') || 12),
       )
     }
-    if (Pvp) {
-      this.intervals.pvp = setLongInterval(
-        async () => {
-          await Pvp.fetchLatestPokemon()
+    this.intervals.pokemonData = setLongInterval(
+      async () => {
+        try {
+          await refreshPokemonData()
           await this.chatLog('event', {
-            description: 'Refreshed PVP masterfile',
+            description: 'Refreshed Pokemon base-stat snapshot',
           })
-        },
-        1000 * 60 * 60 * (config.getSafe('map.misc.masterfileCacheHrs') || 6),
-      )
-    }
+        } catch (e) {
+          this.log.warn('Unable to refresh Pokemon base-stat snapshot', e)
+        }
+      },
+      1000 * 60 * 60 * (config.getSafe('map.misc.masterfileCacheHrs') || 12),
+    )
     this.intervals.webhooks = setLongInterval(
       async () => {
         await this.getWebhooks()
@@ -515,6 +514,12 @@ class EventManager extends Logger {
         if (category === 'pokemon' && id === '132' && formId === '0') {
           // Wild Ditto uses a synthetic filter key here. Do not backfill it
           // into the masterfile as a real form entry.
+          return
+        }
+        if (!+id) {
+          // Pokémon 0 is an unknown-boss placeholder. Backfilling it would
+          // spawn a hidden, default-enabled `0-0` raid filter that matches
+          // every egg (eggs store raid_pokemon_id/form as 0).
           return
         }
         if (!this.masterfile.pokemon[id]) {

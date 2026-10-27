@@ -4,12 +4,13 @@ const i18next = require('i18next')
 const knexFactory = require('knex')
 
 const config = require('@rm/config')
+
+const { state } = require('./stateMock')
 const { buildPokestops } = require('../src/filters/builder/pokestop')
 const { Pokestop } = require('../src/models/Pokestop')
 const {
   mapAvailablePokestops,
 } = require('../src/models/pokestopAvailableMapper')
-const { state } = require('../src/services/state')
 const {
   ROCKET_POKEMON_FILTER_EXCLUDED_CHARACTERS,
   collapseRocketPokemonFilterKeys,
@@ -472,6 +473,7 @@ test('available mapper keeps invasion keys but omits rewards for 44-46', () => {
   })
   const { available } = mapAvailablePokestops(
     {
+      showcase_focus_filter: true,
       invasions: [
         apiInvasion(1, 19),
         apiInvasion(44, 643),
@@ -494,6 +496,7 @@ test('available mapper keeps invasion keys but omits rewards for 44-46', () => {
 test('available mapper canonicalizes zero and preserves unknown forms', () => {
   const { available } = mapAvailablePokestops(
     {
+      showcase_focus_filter: true,
       invasions: [
         {
           character: 1,
@@ -613,6 +616,7 @@ test('SQL availability accepts partial lineups and community-only sources', asyn
     hasShowcaseData: false,
     hasShowcaseForm: false,
     hasShowcaseType: false,
+    hasShowcaseFocus: false,
   }
   const confirmed = await Pokestop.getAvailable(context)
   const rocketSql = sql.find(

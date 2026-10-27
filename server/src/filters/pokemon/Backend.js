@@ -14,6 +14,7 @@ const {
   dnfifyIvFilter,
 } = require('./functions')
 const { filterRTree } = require('../../utils/filterRTree')
+const { encodeEncounterId } = require('../../services/encounterToken')
 const { PokemonFilter } = require('./Frontend')
 const { state } = require('../../services/state')
 
@@ -55,7 +56,10 @@ class PkmnBackend {
     this.perms = perms
     this.mods = mods
     this.standard = new PokemonFilter()
-    this.allKeys = [...BASE_KEYS, ...this.pvpConfig.leagues.map((l) => l.name)]
+    this.pvpLeagues = new Set(
+      this.pvpConfig.leagues.map((league) => league.name),
+    )
+    this.allKeys = [...BASE_KEYS, ...this.pvpLeagues]
     this.filter = filter
     this.global = global
     this.filterKeys = this.getRelevantKeys(filter)
@@ -170,9 +174,8 @@ class PkmnBackend {
       : new Set(
           this.allKeys.filter(
             (key) =>
-              (this.pvpConfig.leagueObj[key]
-                ? this.perms.pvp
-                : this.perms.iv) && this.isActive(key, filter),
+              (this.pvpLeagues.has(key) ? this.perms.pvp : this.perms.iv) &&
+              this.isActive(key, filter),
           ),
         )
   }
@@ -394,17 +397,14 @@ class PkmnBackend {
 
   /**
    * @param {import("@rm/types").Pokemon} pokemon
-   * @param {number} [ts]
    * @returns {{ cleanPvp: import('@rm/types').CleanPvp, bestPvp: number }}
    */
-  buildPvp(pokemon, ts = Math.floor(Date.now() / 1000)) {
-    const parsed = this.pvpConfig.reactMapHandlesPvp
-      ? state.pvp.resultWithCache(pokemon, ts)
-      : getParsedPvp(pokemon)
+  buildPvp(pokemon) {
+    const parsed = getParsedPvp(pokemon)
     const cleanPvp = /** @type {import('@rm/types').CleanPvp} */ ({})
     let bestPvp = 4096
     Object.keys(parsed).forEach((league) => {
-      if (this.pvpConfig.leagueObj[league]) {
+      if (this.pvpLeagues.has(league)) {
         const { filtered, best } = this.getRanks(league, parsed[league])
         if (filtered.length) {
           cleanPvp[league] = filtered
@@ -421,7 +421,7 @@ class PkmnBackend {
    */
   build(pokemon) {
     const result = {
-      id: pokemon.id,
+      id: encodeEncounterId(pokemon.id),
       encounter_id: pokemon.encounter_id,
       spawnpoint_id: pokemon.spawnpoint_id,
       lat: pokemon.lat,

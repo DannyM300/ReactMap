@@ -23,6 +23,7 @@ import type { EventManager } from 'server/src/services/EventManager'
 import { ModelReturn, OnlyType } from './utility'
 import { Profile } from 'passport-discord'
 import { User } from './models'
+import { ShowcaseFocus } from './scanner'
 import { Config } from '@rm/types'
 import { OperationTypeNode } from 'graphql'
 
@@ -43,6 +44,7 @@ export interface DbContext {
   hasShowcaseData: boolean
   hasShowcaseForm: boolean
   hasShowcaseType: boolean
+  hasShowcaseFocus: boolean
   hasMultiBattles: boolean
   hasStationedGmax: boolean
   hasBattlePokemonStats: boolean
@@ -103,9 +105,17 @@ export interface AvailablePokestopShowcase {
   pokemon_id: number | null
   form: number | null
   type_id: number | null
+  showcase_focus: ShowcaseFocus | null
 }
 
 export interface AvailablePokestops {
+  /**
+   * @deprecated Golbat advertises showcase focus support via
+   * GET /api/status `filters.showcase_focus` (see GolbatStatus). This
+   * per-response flag is only consulted for a Golbat whose status route
+   * reports no filters block, and will be dropped once such builds are gone.
+   */
+  showcase_focus_filter?: boolean
   quests: AvailablePokestopQuest[]
   invasions: AvailablePokestopInvasion[]
   lures: AvailablePokestopLure[]
@@ -119,6 +129,35 @@ export interface Available {
   nests: ModelReturn<typeof Nest, 'getAvailable'>
   stations: ModelReturn<typeof Station, 'getAvailable'>
   tappables: ModelReturn<typeof Tappable, 'getAvailable'>
+}
+
+/**
+ * Parsed GET /api/status from one Golbat instance. Every key a build defines
+ * is true; the signal is the key's presence. `filters` is null when the build
+ * predates the block (it then advertises no optional DNF filter fields), so
+ * consumers can fall back to older per-response flags for that build only.
+ */
+export interface GolbatStatus {
+  features: Record<string, boolean>
+  limits: Record<string, number>
+  filters: Record<string, boolean> | null
+}
+
+/** Registry entry kept by GolbatCapabilities, keyed by the endpoint base url. */
+export interface GolbatInstance {
+  mem: string
+  /** Every distinct credential set configured for this url, in config order. */
+  credentials: {
+    secret: string
+    httpAuth: { username: string; password: string } | null
+  }[]
+  /** Index into `credentials` of the set that last got through; tried first. */
+  credentialIndex: number
+  /** Last good status; null until the instance has answered once. */
+  status: GolbatStatus | null
+  /** Epoch ms of the last refresh start; drives the recheck debounce. */
+  lastFetchAt: number
+  inflight: Promise<void> | null
 }
 
 export interface ApiEndpoint {
@@ -295,7 +334,6 @@ export type ExpressErrorMiddleware = (
 
 export interface StateReportObj {
   database: boolean
-  pvp: boolean
   icons: boolean
   audio: boolean
   historical: boolean

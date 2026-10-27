@@ -10,6 +10,7 @@ const { missing, readAndParseJson } = require('@rm/locales')
 
 const { buildDefaultFilters } = require('../filters/builder/base')
 const { filterComponents } = require('../utils/filterComponents')
+const { annotateTelegramBlocks } = require('../utils/getTelegramStrategy')
 const { validateSelectedWebhook } = require('../utils/validateSelectedWebhook')
 const { PoracleAPI } = require('../services/Poracle')
 const { geocoder } = require('../services/geocoder')
@@ -19,10 +20,17 @@ const {
   getStatus: getShinyCheckStatus,
 } = require('../services/shinyCheckApi')
 const { personalShinyApi } = require('../services/personalShinyApi')
+const {
+  encodeEncounterId,
+  decodeEncounterId,
+} = require('../services/encounterToken')
 const { getPolyVector } = require('../utils/getPolyVector')
 const { getPlacementCells } = require('../utils/getPlacementCells')
 const { getTypeCells } = require('../utils/getTypeCells')
 const { getValidCoords } = require('../utils/getValidCoords')
+const {
+  hasAnyPokestopPermission,
+} = require('../utils/hasAnyPokestopPermission')
 
 /** @type {import("@apollo/server").ApolloServerOptions<import("@rm/types").GqlContext>['resolvers']} */
 const resolvers = {
@@ -77,8 +85,13 @@ const resolvers = {
         if (x.startsWith('i') || x.startsWith('a')) {
           return perms?.invasions
         }
-        if (x.startsWith('d') || x.startsWith('f') || x.startsWith('h')) {
-          return perms?.lures
+        if (
+          x.startsWith('b') ||
+          x.startsWith('f') ||
+          x.startsWith('h') ||
+          x.startsWith('y')
+        ) {
+          return perms?.eventStops
         }
         if (
           x.startsWith('q') ||
@@ -144,14 +157,16 @@ const resolvers = {
               components = [],
               ...rest
             } = config.getMapConfig(req)[component]
+            const strategies = config.getSafe('authentication.strategies')
+            const prepare = (blocks) =>
+              annotateTelegramBlocks(
+                filterComponents(blocks, !!username, perms.donor),
+                strategies,
+              )
             return {
               ...rest,
-              footerButtons: filterComponents(
-                footerButtons,
-                !!username,
-                perms.donor,
-              ),
-              components: filterComponents(components, !!username, perms.donor),
+              footerButtons: prepare(footerButtons),
+              components: prepare(components),
             }
           }
           return null
@@ -213,6 +228,7 @@ const resolvers = {
             search,
             false,
             webhook.addressFormat,
+            webhook.geocoderProvider,
           )
         }
       }
@@ -225,7 +241,7 @@ const resolvers = {
       return []
     },
     gymsSingle: (_, args, { perms, Db }) => {
-      if (perms?.[args.perm]) {
+      if (perms?.gyms || perms?.raids) {
         return Db.getOne('Gym', args.id)
       }
       return {}
@@ -258,40 +274,47 @@ const resolvers = {
       return []
     },
     nestsSingle: (_, args, { perms, Db }) => {
-      if (perms?.[args.perm]) {
+      if (perms?.nests) {
         return Db.getOne('Nest', args.id)
       }
       return {}
     },
     pokestops: (_, args, { perms, Db }) => {
-      if (
-        perms?.pokestops ||
-        perms?.lures ||
-        perms?.quests ||
-        perms?.invasions
-      ) {
+      if (hasAnyPokestopPermission(perms)) {
         return Db.query('Pokestop', 'getAll', perms, args)
       }
       return []
     },
     pokestopsSingle: (_, args, { perms, Db }) => {
-      if (perms?.[args.perm]) {
+      if (hasAnyPokestopPermission(perms)) {
         return Db.getOne('Pokestop', args.id)
       }
       return {}
     },
     pokemon: (_, args, { perms, Db }) => {
       if (perms?.pokemon) {
-        if (args.filters.onlyLegacy) {
-          return Db.query('Pokemon', 'getLegacy', perms, args)
+        const decodedArgs = {
+          ...args,
+          filters: {
+            ...args.filters,
+            onlyManualId: decodeEncounterId(args.filters.onlyManualId),
+          },
         }
-        return Db.query('Pokemon', 'getAll', perms, args)
+        if (args.filters.onlyLegacy) {
+          return Db.query('Pokemon', 'getLegacy', perms, decodedArgs)
+        }
+        return Db.query('Pokemon', 'getAll', perms, decodedArgs)
       }
       return []
     },
-    pokemonSingle: (_, args, { perms, Db }) => {
-      if (perms?.[args.perm]) {
-        return Db.getOne('Pokemon', args.id)
+    pokemonSingle: async (_, args, { perms, Db }) => {
+      if (perms?.pokemon) {
+        const id = decodeEncounterId(args.id, { allowRaw: true })
+        if (id === null) return {}
+        const result = await Db.getOne('Pokemon', id)
+        return 'lat' in result
+          ? { ...result, id: encodeEncounterId(id) }
+          : result
       }
       return {}
     },
@@ -319,7 +342,7 @@ const resolvers = {
       return []
     },
     portalsSingle: (_, args, { perms, Db }) => {
-      if (perms?.[args.perm]) {
+      if (perms?.portals) {
         return Db.getOne('Portal', args.id)
       }
       return {}
@@ -539,6 +562,7 @@ const resolvers = {
                     { lat: result.lat, lon: result.lon },
                     true,
                     webhook.addressFormat,
+                    webhook.geocoderProvider,
                   ),
                 })),
               )
@@ -617,8 +641,15 @@ const resolvers = {
     },
     tappableById: async (_, { id }, { perms, Db }) => {
       if (perms?.tappables) {
-        const results = await Db.query('Tappable', 'getById', perms, id)
-        return Array.isArray(results) ? results[0] || null : results
+        const tappableId = decodeEncounterId(id)
+        if (tappableId === null) return null
+        const results = await Db.query('Tappable', 'getById', perms, tappableId)
+        const result = Array.isArray(results) ? results[0] || null : results
+        if (result && config.getSafe('api.hideEncounterIds')) {
+          // a pokemon's tappable shares its encounter ID, so echo the token
+          return { ...result, id }
+        }
+        return result
       }
       return null
     },

@@ -10,6 +10,7 @@ import { resolveShowcaseEventIcon } from './resolveShowcaseEventIcon'
 import {
   getEnabledRocketPokemonFilterKeys,
   getCanonicalRocketPokemonFilterKey,
+  getRocketPokemonFilterKey,
   isRocketPokemonFilterExcluded,
 } from './rocketPokemonFiltering'
 
@@ -206,18 +207,23 @@ export function usePokestopMarker({
           gruntData,
           masterfile.pokemon,
         )
-        const uniqueReward = rewardCandidates.length === 1
-        const showRewardMarker = showInvasionRewardMarker && uniqueReward
+        // Missing, unset, and default forms share the species' default marker.
+        // Keep the original candidates for form-sensitive filter sizing below.
+        const markerRewards = new Map(
+          rewardCandidates.map(({ id, form }) => {
+            const markerForm = form || masterfile.pokemon[id]?.defaultFormId
+            return [
+              getRocketPokemonFilterKey(id, markerForm),
+              { id, form: markerForm },
+            ]
+          }),
+        )
+        const [markerReward] = markerRewards.values()
+        const showRewardMarker =
+          showInvasionRewardMarker && markerRewards.size === 1
         const invasionSizeCategory = showRewardMarker ? 'reward' : 'invasion'
         const invasionIcon = showRewardMarker
-          ? Icons.getPokemon(
-              rewardCandidates[0].id,
-              rewardCandidates[0].form,
-              0,
-              0,
-              0,
-              1,
-            )
+          ? Icons.getPokemon(markerReward.id, markerReward.form, 0, 0, 0, 1)
           : Icons.getInvasions(invasion.grunt_type, invasion.confirmed)
 
         invasionIcons.unshift({

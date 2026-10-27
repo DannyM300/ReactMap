@@ -35,6 +35,7 @@ import { useGetAvailable } from '@hooks/useGetAvailable'
 import { parseQuestConditions } from '@utils/parseConditions'
 import { Img } from '@components/Img'
 import { readableProbability } from '@utils/readableProbability'
+import { getShowcaseBuddyLabelKey } from '@utils/showcaseFocus'
 import { useTranslateById } from '@hooks/useTranslateById'
 import {
   usePokemonBackgroundVisuals,
@@ -281,18 +282,26 @@ export function PokestopPopup({
                                 key={showcaseIcon.tooltipKey}
                                 title={[showcaseIcon.tooltipKey]}
                               >
-                                <div className="invasion-reward">
+                                {showcaseIcon.decoration ? (
+                                  <div className="invasion-reward">
+                                    <img
+                                      className="invasion-reward"
+                                      alt="invasion reward"
+                                      src={showcaseIcon.url}
+                                    />
+                                    <img
+                                      className="invasion-reward-shadow"
+                                      alt="shadow"
+                                      src={Icons.getEventStops(displayType)}
+                                    />
+                                  </div>
+                                ) : (
                                   <img
                                     className="invasion-reward"
-                                    alt="invasion reward"
+                                    alt={t('showcase')}
                                     src={showcaseIcon.url}
                                   />
-                                  <img
-                                    className="invasion-reward-shadow"
-                                    alt="shadow"
-                                    src={Icons.getEventStops(displayType)}
-                                  />
-                                </div>
+                                )}
                               </NameTT>
                             ) : showcaseIcon ? (
                               showcaseIcon.url
@@ -307,6 +316,7 @@ export function PokestopPopup({
                         >
                           <Showcase
                             {...showcase}
+                            showcase_focus={event.showcase_focus}
                             showcase_ranking_standard={
                               event.showcase_ranking_standard
                             }
@@ -803,7 +813,9 @@ const ExtraInfo = ({ last_modified_timestamp, updated, lat, lon }) => {
   return (
     <Collapse in={open} timeout="auto" unmountOnExit sx={{ width: '100%' }}>
       <Grid container alignItems="center" justifyContent="center">
-        <TimeStamp time={updated}>last_seen</TimeStamp>
+        <TimeStamp time={updated} xs={last_modified_timestamp ? 6 : 12}>
+          last_seen
+        </TimeStamp>
         <TimeStamp time={last_modified_timestamp}>last_modified</TimeStamp>
         {enablePokestopPopupCoords && (
           <Grid xs={12} textAlign="center">
@@ -907,18 +919,21 @@ const Invasion = ({ grunt_type, confirmed, ...invasion }) => {
  * @param {{
  *   last_update?: number
  *   total_entries?: number
+ *   showcase_focus?: unknown
  *   showcase_ranking_standard: number
  *   children: React.ReactNode
  * }} param0
  * @returns
  */
 const Showcase = ({
+  showcase_focus,
   showcase_ranking_standard,
   total_entries,
   last_update,
   children,
 }) => {
   const { t } = useTranslation()
+  const buddyLabelKey = getShowcaseBuddyLabelKey(showcase_focus)
   return (
     <Grid container>
       <Grid xs={12}>
@@ -929,6 +944,13 @@ const Showcase = ({
           )}
         </Typography>
       </Grid>
+      {buddyLabelKey && (
+        <Grid xs={12}>
+          <Typography variant="subtitle2" align="center">
+            {t(buddyLabelKey)}
+          </Typography>
+        </Grid>
+      )}
       <Grid xs={12}>{children}</Grid>
       <Grid xs={6}>
         <Typography variant="subtitle2" align="center">

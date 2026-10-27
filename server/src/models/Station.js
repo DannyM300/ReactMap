@@ -12,7 +12,7 @@ const {
 } = require('../utils/manualFilter')
 const { getEpoch } = require('../utils/getClientTime')
 const { state } = require('../services/state')
-const { getSharedPvpWrapper } = require('../services/PvpWrapper')
+const { ensurePokemonData } = require('../services/PokemonData')
 const {
   evalScannerQuery,
   describeScannerResponse,
@@ -432,6 +432,7 @@ function getVisibleStationBattle(battles, ts) {
  * @param {{
  *  ts: number
  *  includeUpcoming: boolean
+ *  onlyAllStations: boolean
  *  onlyBattleTier: string | number
  *  battleLevels: number[]
  *  battleCombos: { pokemonId: number, form: number | null, gender: 1 | 2 | 3 | null }[]
@@ -440,11 +441,16 @@ function getVisibleStationBattle(battles, ts) {
 function addBattleFilterClause(
   builder,
   prefix,
-  { ts, includeUpcoming, onlyBattleTier, battleLevels, battleCombos },
+  {
+    ts,
+    includeUpcoming,
+    onlyAllStations,
+    onlyBattleTier,
+    battleLevels,
+    battleCombos,
+  },
 ) {
-  builder
-    .whereNotNull(`${prefix}battle_pokemon_id`)
-    .andWhere(`${prefix}battle_end`, '>', ts)
+  builder.where(`${prefix}battle_end`, '>', ts)
   if (!includeUpcoming) {
     builder.andWhere((active) => {
       active
@@ -453,6 +459,8 @@ function addBattleFilterClause(
         .orWhere(`${prefix}battle_start`, '<=', ts)
     })
   }
+  if (onlyAllStations) return
+  builder.whereNotNull(`${prefix}battle_pokemon_id`)
   if (onlyBattleTier === 'all') {
     builder.andWhere((match) => {
       let matchApplied = false
@@ -691,12 +699,15 @@ class Station extends Model {
     const inactiveCutoff = now - stationInactiveLimitDays * 24 * 60 * 60
     const battleFilterOptions = {
       ts,
-      includeUpcoming: !!onlyAllStations || !!onlyIncludeUpcoming,
+      includeUpcoming: !!onlyIncludeUpcoming,
+      onlyAllStations: !!onlyAllStations,
       onlyBattleTier,
       battleLevels,
       battleCombos,
     }
     const { includeUpcoming } = battleFilterOptions
+    const includeInactiveStations =
+      onlyInactiveStations && (!onlyAllStations || includeUpcoming)
     const shouldRestrictReturnedBattles = onlyMaxBattles && hasBattleConditions
 
     if (mem) {
@@ -707,7 +718,10 @@ class Station extends Model {
       try {
         // /api/station/scan returns an envelope { stations, examined, skipped,
         // total } — the matching stations are on res.stations.
-        const dnf = buildStationDnfFilters(args.filters)
+        const dnf = buildStationDnfFilters({
+          ...args.filters,
+          onlyInactiveStations: includeInactiveStations,
+        })
         const res = await evalScannerQuery(
           TAGS.stations,
           `${mem}/api/station/scan`,
@@ -750,7 +764,7 @@ class Station extends Model {
           let pokemonData = null
           if (includeBattleData) {
             try {
-              pokemonData = await getSharedPvpWrapper().ensurePokemonData()
+              pokemonData = await ensurePokemonData()
             } catch (e) {
               log.warn(
                 TAGS.fetch,
@@ -761,7 +775,12 @@ class Station extends Model {
           }
           // Replicate the SQL WHERE that the endpoint (match-all) can't apply.
           const passesFilterGate = (s) => {
-            if (onlyAllStations) return true
+            if (onlyAllStations) {
+              return (
+                includeUpcoming ||
+                (s.battles || []).some((b) => isStationBattleActive(b, ts))
+              )
+            }
             if (!perms.dynamax) return false
             const battleMatch =
               onlyMaxBattles &&
@@ -779,7 +798,7 @@ class Station extends Model {
           const passesTimeGate = (s) => {
             const active =
               Number(s.end_time) > ts && Number(s.updated) > activeCutoff
-            if (onlyInactiveStations) {
+            if (includeInactiveStations) {
               const inactive =
                 Number(s.end_time) <= ts && Number(s.updated) > inactiveCutoff
               return (active && passesFilterGate(s)) || inactive
@@ -919,8 +938,8 @@ class Station extends Model {
     }
 
     const applyStationFilters = (builder) => {
-      if (onlyAllStations) return
-      if (!perms.dynamax) {
+      if (onlyAllStations && includeUpcoming) return
+      if (!onlyAllStations && !perms.dynamax) {
         builder.whereRaw('0 = 1')
         return
       }
@@ -928,39 +947,36 @@ class Station extends Model {
       builder.andWhere((station) => {
         let applied = false
 
-        if (onlyMaxBattles) {
-          if (hasBattleConditions) {
-            const method = applied ? 'orWhere' : 'where'
-            station[method]((battle) => {
-              if (hasMultiBattles) {
-                battle.whereExists(
-                  this.knex()
-                    .select(1)
-                    .from(STATION_BATTLE_FILTER_TABLE)
-                    .whereRaw(
-                      `${STATION_BATTLE_FILTER_ALIAS}.station_id = station.id`,
+        if (onlyAllStations || (onlyMaxBattles && hasBattleConditions)) {
+          station.where((battle) => {
+            if (hasMultiBattles) {
+              battle.whereExists(
+                this.knex()
+                  .select(1)
+                  .from(STATION_BATTLE_FILTER_TABLE)
+                  .whereRaw(
+                    `${STATION_BATTLE_FILTER_ALIAS}.station_id = station.id`,
+                  )
+                  .modify((subquery) => {
+                    addBattleFilterClause(
+                      subquery,
+                      `${STATION_BATTLE_FILTER_ALIAS}.`,
+                      battleFilterOptions,
                     )
-                    .modify((subquery) => {
-                      addBattleFilterClause(
-                        subquery,
-                        `${STATION_BATTLE_FILTER_ALIAS}.`,
-                        battleFilterOptions,
-                      )
-                    }),
-                )
-              } else {
-                addBattleFilterClause(
-                  battle,
-                  `${STATION_TABLE}.`,
-                  battleFilterOptions,
-                )
-              }
-            })
-            applied = true
-          }
+                  }),
+              )
+            } else {
+              addBattleFilterClause(
+                battle,
+                `${STATION_TABLE}.`,
+                battleFilterOptions,
+              )
+            }
+          })
+          applied = true
         }
 
-        if (onlyGmaxStationed) {
+        if (!onlyAllStations && onlyGmaxStationed) {
           if (hasStationedGmax) {
             const method = applied ? 'orWhere' : 'where'
             station[method](getStationColumn('total_stationed_gmax'), '>', 0)
@@ -995,7 +1011,7 @@ class Station extends Model {
         .orderBy(`${STATION_BATTLE_ROW_ALIAS}.battle_start`, 'asc')
     }
 
-    if (onlyInactiveStations) {
+    if (includeInactiveStations) {
       query.andWhere((builder) => {
         builder.where((active) => {
           active
@@ -1040,7 +1056,7 @@ class Station extends Model {
       })
       if (needsEstimatedCp) {
         try {
-          pokemonData = await getSharedPvpWrapper().ensurePokemonData()
+          pokemonData = await ensurePokemonData()
         } catch (e) {
           log.warn(
             TAGS.fetch,
@@ -1274,10 +1290,16 @@ class Station extends Model {
         ...new Set(
           results
             .filter(({ battle_level }) => !!battle_level)
-            .flatMap((station) => [
-              `${station.battle_pokemon_id}-${station.battle_pokemon_form}`,
-              `j${station.battle_level}`,
-            ]),
+            .flatMap((station) =>
+              // Mirrors mapStationAvailable: an unknown boss (NULL or 0) must
+              // not publish a `0-0`/`null-null` boss key.
+              Number(station.battle_pokemon_id) > 0
+                ? [
+                    `${station.battle_pokemon_id}-${station.battle_pokemon_form}`,
+                    `j${station.battle_level}`,
+                  ]
+                : [`j${station.battle_level}`],
+            ),
         ),
       ],
     }

@@ -4,6 +4,7 @@ import { useQuery } from '@apollo/client'
 
 import { GET_MAP_DATA } from '@services/queries/available'
 import { deepMerge } from '@utils/deepMerge'
+import { matchesFilterSelection } from '@utils/filterSelection'
 import { UAssets } from '@services/Assets'
 import { useMemory } from '@store/useMemory'
 import { useStorage } from '@store/useStorage'
@@ -112,6 +113,42 @@ export function useMapData(once = false) {
       }))
       useStorage.setState((prev) => {
         const newFilters = deepMerge({}, filters, prev.filters)
+
+        // Apply bulk defaults only to new entries, before Rocket form changes
+        // carry over their existing individual settings.
+        Object.entries(filters).forEach(([category, definitions]) => {
+          const previous = prev.filters[category]
+          const defaults = previous?.selectionDefaults || {}
+          const previousEnabled = previous?.filter?.global?.enabled
+          const serverEnabled = definitions?.filter?.global?.enabled
+          const legacyDefault =
+            previousEnabled !== undefined &&
+            serverEnabled !== undefined &&
+            previousEnabled !== serverEnabled
+              ? previousEnabled
+              : undefined
+
+          Object.keys(definitions?.filter || {}).forEach((key) => {
+            if (key === 'global' || previous?.filter?.[key] !== undefined)
+              return
+            const scopedDefault = Object.entries(defaults).find(
+              ([scope]) =>
+                scope !== 'all' &&
+                matchesFilterSelection(
+                  category,
+                  key,
+                  /** @type {import('@utils/filterSelection').FilterSelectionScope} */ (
+                    scope
+                  ),
+                ),
+            )?.[1]
+            const defaultEnabled =
+              scopedDefault ?? defaults.all ?? legacyDefault
+            if (defaultEnabled !== undefined) {
+              newFilters[category].filter[key].enabled = defaultEnabled
+            }
+          })
+        })
 
         const currentPokestopFilters = filters.pokestops?.filter || {}
         const previousPokestopFilters = prev.filters.pokestops?.filter || {}
@@ -264,17 +301,6 @@ export function useMapData(once = false) {
             }
           },
         )
-        const defaultEnabled = prev.filters?.pokemon?.filter?.global?.enabled
-        const serverEnabled = filters.pokemon?.filter?.global?.enabled
-        if (
-          defaultEnabled !== undefined &&
-          serverEnabled !== undefined &&
-          defaultEnabled !== serverEnabled
-        )
-          Object.entries(newFilters.pokemon.filter).forEach(([key, filter]) => {
-            if (prev.filters.pokemon.filter[key] === undefined)
-              filter.enabled = defaultEnabled
-          })
         return {
           filters: newFilters,
         }

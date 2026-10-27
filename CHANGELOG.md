@@ -1,3 +1,149 @@
+## [1.55.2](https://github.com/WatWowMap/ReactMap/compare/v1.55.1...v1.55.2) (2026-10-24)
+
+
+### Bug Fixes
+
+* **security:** bump body-parser to 2.4.0 ([d826f72](https://github.com/WatWowMap/ReactMap/commit/d826f72bf6161b1c2905074e4c0df89df97bc63a))
+
+## [1.55.1](https://github.com/WatWowMap/ReactMap/compare/v1.55.0...v1.55.1) (2026-10-24)
+
+
+### Bug Fixes
+
+* **server:** restore request body inflation ([410570c](https://github.com/WatWowMap/ReactMap/commit/410570c06f831392c6d029419f40480ebf73b6c0))
+
+# [1.55.0](https://github.com/WatWowMap/ReactMap/compare/v1.54.0...v1.55.0) (2026-10-24)
+
+
+### Bug Fixes
+
+* **security:** patch node2shell (CVE-2026-111497) ([e259ee4](https://github.com/WatWowMap/ReactMap/commit/e259ee4cbf799cd3028d54608ae202d41dca0536))
+
+
+### Features
+
+* **pokemon:** replace encounter ids with encrypted tokens ([19ba69e](https://github.com/WatWowMap/ReactMap/commit/19ba69ef5933aa8a52af22732d3e9fd1e751ab89))
+
+# [1.54.0](https://github.com/WatWowMap/ReactMap/compare/v1.53.2...v1.54.0) (2026-10-20)
+
+
+### Features
+
+* **golbat:** discover instance capabilities from /api/status ([#1258](https://github.com/WatWowMap/ReactMap/issues/1258)) ([c83f93f](https://github.com/WatWowMap/ReactMap/commit/c83f93f6e61eeb8f403bf44d160510f1073807d3))
+
+## [1.53.2](https://github.com/WatWowMap/ReactMap/compare/v1.53.1...v1.53.2) (2026-10-10)
+
+
+### Bug Fixes
+
+* **pokemon:** apply glow to background box instead of sprite ([70cfd77](https://github.com/WatWowMap/ReactMap/commit/70cfd77f44054ad3df4ab18720fa880934e9ee63))
+
+## [1.53.1](https://github.com/WatWowMap/ReactMap/compare/v1.53.0...v1.53.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* unknown station boss leaking all raid eggs ([5c7f260](https://github.com/WatWowMap/ReactMap/commit/5c7f260c6309e64714411791e03be9de96f483f4))
+
+# [1.53.0](https://github.com/WatWowMap/ReactMap/compare/v1.52.0...v1.53.0) (2026-10-02)
+
+
+### Bug Fixes
+
+* apply to all applies to future ([77e7d09](https://github.com/WatWowMap/ReactMap/commit/77e7d0913bfabfd3a836cebfd3c1dd05b5fb9456))
+
+
+### Features
+
+* allow exclude upcoming for all stations ([1fc870d](https://github.com/WatWowMap/ReactMap/commit/1fc870d94bc0e3a53010367e213e18af399c3b27))
+
+# [1.52.0](https://github.com/WatWowMap/ReactMap/compare/v1.51.4...v1.52.0) (2026-09-30)
+
+
+### Features
+
+* **auth:** support Telegram OAuth (OpenID Connect) ([25938dd](https://github.com/WatWowMap/ReactMap/commit/25938dd6de4a7f1be85984c5a3a676c69fed8145))
+
+## [1.51.4](https://github.com/WatWowMap/ReactMap/compare/v1.51.3...v1.51.4) (2026-09-30)
+
+
+### Bug Fixes
+
+* **api:** enforce server-side perms on single-entity queries ([9922240](https://github.com/WatWowMap/ReactMap/commit/99222407839e6ec2d626bd3f0f61a05edf6204ac))
+
+## [1.51.3](https://github.com/WatWowMap/ReactMap/compare/v1.51.2...v1.51.3) (2026-09-29)
+
+
+### Bug Fixes
+
+* missing lure tappable offset ([b752389](https://github.com/WatWowMap/ReactMap/commit/b752389c985b7b33d580d6366ad7f2036d535cf1))
+
+## [1.51.2](https://github.com/WatWowMap/ReactMap/compare/v1.51.1...v1.51.2) (2026-09-24)
+
+
+### Bug Fixes
+
+* form collapsing for grunt reward ([79e7839](https://github.com/WatWowMap/ReactMap/commit/79e783979b92c956120a15bff248e6b13ab25b63))
+* fort timestamp layout ([a408745](https://github.com/WatWowMap/ReactMap/commit/a408745739c5bf43d6277acdc35b51785430cd55))
+* revoke access ([63c98ba](https://github.com/WatWowMap/ReactMap/commit/63c98baa13c943b2c9584e4399e8db82f5aab888)), closes [#1254](https://github.com/WatWowMap/ReactMap/issues/1254)
+
+## [1.51.1](https://github.com/WatWowMap/ReactMap/compare/v1.51.0...v1.51.1) (2026-08-27)
+
+
+### Bug Fixes
+
+* **map:** remove legacy Carto tile fallback ([e7d6a87](https://github.com/WatWowMap/ReactMap/commit/e7d6a871313ac8cbb33f9c5949d4bc513637ec8a))
+* remove carto tiles from default.json ([9891234](https://github.com/WatWowMap/ReactMap/commit/9891234b072b0f0fb30f8dbbd094cdbf9d5db87f))
+
+# [1.51.0](https://github.com/WatWowMap/ReactMap/compare/v1.50.2...v1.51.0) (2026-08-25)
+
+
+### Bug Fixes
+
+* **geocoder:** correct the Photon mapping against a live index ([d3d9347](https://github.com/WatWowMap/ReactMap/commit/d3d9347356afb7d88ebbb1c76464d10315776707))
+* **geocoder:** detect Nominatim's reverse shape on the Photon path ([73d14bd](https://github.com/WatWowMap/ReactMap/commit/73d14bd7ec0636ce5971146e2dc1ce62c9297a06))
+* **geocoder:** do not query the upstream for an empty search ([02de8dc](https://github.com/WatWowMap/ReactMap/commit/02de8dc2586a67425681791bcef48cb8c4a7d175))
+* **geocoder:** keep the caller's shape on failure and resolve district results ([0e168b6](https://github.com/WatWowMap/ReactMap/commit/0e168b6f1118feb7bc6df6d58bf18642606fe9f4))
+* **geocoder:** make the provider mismatch observable against a real Nominatim host ([170258c](https://github.com/WatWowMap/ReactMap/commit/170258ce9e2d1e1089b08f282f4911bb42bea6ed))
+* **geocoder:** narrow the Photon signature and carry neighborhood end to end ([70eedcd](https://github.com/WatWowMap/ReactMap/commit/70eedcd2c506748d9e04c2b3b1015b8bc37280af))
+* **geocoder:** only inherit Poracle's provider alongside its URL ([b647126](https://github.com/WatWowMap/ReactMap/commit/b6471267dd66b2852abe3d68eb9d7c94d98a8458))
+* **geocoder:** reject non-Nominatim problem bodies instead of passing a blank result ([6b37fd3](https://github.com/WatWowMap/ReactMap/commit/6b37fd3230d7828d673ca51732fa8d28b4510872))
+* **geocoder:** report a Photon URL left on the Nominatim provider ([c1e868e](https://github.com/WatWowMap/ReactMap/commit/c1e868e518dfda4c3ad25f59d53c5cb51c47e75f))
+* **geocoder:** stop a provider mismatch from crashing the server ([ddf394d](https://github.com/WatWowMap/ReactMap/commit/ddf394dfd11bd2134043ba96b7045734139cff93))
+* **geocoder:** validate coordinates and keep transient failures out of provider advice ([fb398d7](https://github.com/WatWowMap/ReactMap/commit/fb398d783e06c3e80418d5610c55ed06e15c5a8b))
+
+
+### Features
+
+* **geocoder:** derive geocoderProvider from Poracle's remote config ([bbd43da](https://github.com/WatWowMap/ReactMap/commit/bbd43dae161869a566dcf4d3da76d6ccdbaaf14a))
+
+## [1.50.2](https://github.com/WatWowMap/ReactMap/compare/v1.50.1...v1.50.2) (2026-08-23)
+
+
+### Bug Fixes
+
+* disable legacy pvp calc ([1ccb391](https://github.com/WatWowMap/ReactMap/commit/1ccb3914e4f5bb3840b0a52a880f3a338d412562))
+
+
+### Reverts
+
+* Revert "Update FUNDING.yml" ([4081a70](https://github.com/WatWowMap/ReactMap/commit/4081a70d1e65f9ad7c436184096834d4cec5d832))
+
+## [1.50.1](https://github.com/WatWowMap/ReactMap/compare/v1.50.0...v1.50.1) (2026-08-20)
+
+
+### Bug Fixes
+
+* distinguish normal/unset form when they both spawn ([a32b97d](https://github.com/WatWowMap/ReactMap/commit/a32b97d0595a47bc2f5dca6e282a1899e4ebaa5e))
+
+# [1.50.0](https://github.com/WatWowMap/ReactMap/compare/v1.49.2...v1.50.0) (2026-08-19)
+
+
+### Features
+
+* **geocoder:** add native Photon provider ([#1242](https://github.com/WatWowMap/ReactMap/issues/1242)) ([b3b9e81](https://github.com/WatWowMap/ReactMap/commit/b3b9e81762a5893a6e5966671767b679855fac61))
+* showcase focus buddy support ([16bd28f](https://github.com/WatWowMap/ReactMap/commit/16bd28fe1db5a966012bd8205d2b1f373153666f)), closes [#1090](https://github.com/WatWowMap/ReactMap/issues/1090)
+
 ## [1.49.2](https://github.com/WatWowMap/ReactMap/compare/v1.49.1...v1.49.2) (2026-08-11)
 
 
